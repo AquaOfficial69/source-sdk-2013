@@ -1320,7 +1320,11 @@ bool CAI_SurrenderBehavior::Speak( AIConcept_t concept, AI_CriteriaSet &modifier
 	if ( pAlly )
 		return pAlly->SpeakIfAllowed( concept, modifiers );
 	
+#ifdef NEW_RESPONSE_SYSTEM
+	return pExpresser->Speak( concept, &modifiers );
+#else
 	return pExpresser->Speak( concept, modifiers );
+#endif
 }
 
 //-----------------------------------------------------------------------------

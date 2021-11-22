@@ -1065,7 +1065,13 @@ WeaponClass_t CBaseCombatWeapon::WeaponClassify()
 	Activity idleact = ActivityOverride(ACT_IDLE_ANGRY, NULL);
 	switch (idleact)
 	{
+#if EXPANDED_HL2_WEAPON_ACTIVITIES
+	case ACT_IDLE_ANGRY_REVOLVER:
+#endif
 	case ACT_IDLE_ANGRY_PISTOL:		return WEPCLASS_HANDGUN;
+#if EXPANDED_HL2_WEAPON_ACTIVITIES
+	case ACT_IDLE_ANGRY_CROSSBOW:	// For now, crossbows are rifles
+#endif
 	case ACT_IDLE_ANGRY_SMG1:
 	case ACT_IDLE_ANGRY_AR2:		return WEPCLASS_RIFLE;
 	case ACT_IDLE_ANGRY_SHOTGUN:	return WEPCLASS_SHOTGUN;
@@ -1096,6 +1102,11 @@ WeaponClass_t CBaseCombatWeapon::WeaponClassFromString(const char *str)
 	return WEPCLASS_INVALID;
 }
 
+#ifdef HL2_DLL
+extern acttable_t *GetSMG1Acttable();
+extern int GetSMG1ActtableCount();
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -1103,11 +1114,31 @@ bool CBaseCombatWeapon::SupportsBackupActivity(Activity activity)
 {
 	// Derived classes should override this.
 
-	// Pistol and melee users should not use SMG animations for missing pistol activities.
-	if (WeaponClassify() == WEPCLASS_HANDGUN || IsMeleeWeapon())
+#ifdef HL2_DLL
+	// Melee users should not use SMG animations for missing activities.
+	if (IsMeleeWeapon() && GetBackupActivityList() == GetSMG1Acttable())
 		return false;
+#endif
 
 	return true;
+}
+
+acttable_t *CBaseCombatWeapon::GetBackupActivityList()
+{
+#ifdef HL2_DLL
+	return GetSMG1Acttable();
+#else
+	return NULL;
+#endif
+}
+
+int CBaseCombatWeapon::GetBackupActivityListCount()
+{
+#ifdef HL2_DLL
+	return GetSMG1ActtableCount();
+#else
+	return 0;
+#endif
 }
 #endif
 
@@ -1580,6 +1611,10 @@ bool CBaseCombatWeapon::DefaultDeploy( char *szViewModel, char *szWeaponModel, i
 
 		SetViewModel();
 		SendWeaponAnim( iActivity );
+		
+#ifdef MAPBASE
+		pOwner->SetAnimation( PLAYER_UNHOLSTER );
+#endif
 
 		pOwner->SetNextAttack( gpGlobals->curtime + SequenceDuration() );
 	}
@@ -1707,6 +1742,11 @@ bool CBaseCombatWeapon::Holster( CBaseCombatWeapon *pSwitchingTo )
 	if (pOwner)
 	{
 		pOwner->SetNextAttack( gpGlobals->curtime + flSequenceDuration );
+
+#ifdef MAPBASE
+		if (IsWeaponVisible() && pOwner->IsPlayer())
+			static_cast<CBasePlayer*>(pOwner)->SetAnimation( PLAYER_HOLSTER );
+#endif
 	}
 
 	// If we don't have a holster anim, hide immediately to avoid timing issues
@@ -2438,9 +2478,10 @@ bool CBaseCombatWeapon::Reload( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CBaseCombatWeapon::Reload_NPC( void )
+void CBaseCombatWeapon::Reload_NPC( bool bPlaySound )
 {
-	WeaponSound( RELOAD_NPC );
+	if (bPlaySound)
+		WeaponSound( RELOAD_NPC );
 
 	if (UsesClipsForAmmo1())
 	{
@@ -2449,7 +2490,6 @@ void CBaseCombatWeapon::Reload_NPC( void )
 	else
 	{
 		// For weapons which don't use clips, give the owner ammo.
-		// This fixes some NPCs infinitely reloading RPGs, etc.
 		if (GetOwner())
 			GetOwner()->SetAmmoCount( GetDefaultClip1(), m_iPrimaryAmmoType );
 	}
