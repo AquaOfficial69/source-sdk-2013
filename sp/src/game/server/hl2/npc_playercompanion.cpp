@@ -312,7 +312,8 @@ void CNPC_PlayerCompanion::Spawn()
 
 	CapabilitiesAdd( bits_CAP_MOVE_GROUND );
 #ifdef EZ2
-	CapabilitiesAdd( bits_CAP_MOVE_JUMP); // 1upD - "player companions" (Rebels and Combine) should jump!
+	if (!IsCombine())
+		CapabilitiesAdd( bits_CAP_MOVE_JUMP); // 1upD - "player companions" (Rebels and beyond) should jump!
 #endif
 	SetMoveType( MOVETYPE_STEP );
 
