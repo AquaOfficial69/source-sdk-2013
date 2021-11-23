@@ -1188,6 +1188,13 @@ void CNPC_Combine::Activate()
 //-----------------------------------------------------------------------------
 void CNPC_Combine::Spawn( void )
 {
+#ifdef EZ
+	// Use CNPC_PlayerCompanion::Spawn
+	BaseClass::Spawn();
+
+	m_flFieldOfView = -0.2;// indicates the width of this NPC's forward view cone ( as a dotproduct result )
+	CapabilitiesRemove( bits_CAP_FRIENDLY_DMG_IMMUNE );	// Soldiers have their own friendly fire handling
+#else
 	SetHullType(HULL_HUMAN);
 	SetHullSizeNormal();
 
@@ -1197,6 +1204,7 @@ void CNPC_Combine::Spawn( void )
 	SetBloodColor( BLOOD_COLOR_RED );
 	m_flFieldOfView			= -0.2;// indicates the width of this NPC's forward view cone ( as a dotproduct result )
 	m_NPCState				= NPC_STATE_NONE;
+#endif
 	m_flNextGrenadeCheck	= gpGlobals->curtime + 1;
 	m_flNextPainSoundTime	= 0;
 	m_flNextAlertSoundTime	= 0;
