@@ -111,6 +111,7 @@ static ConVar v_centerspeed( "v_centerspeed","500" );
 // 54 degrees approximates a 35mm camera - we determined that this makes the viewmodels
 // and motions look the most natural.
 ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_ARCHIVE );
+ConVar v_viewmodel_fov_script_override( "viewmodel_fov_script_override", "0", FCVAR_NONE, "If nonzero, overrides the viewmodel FOV of weapon scripts which override the viewmodel FOV." );
 #elif EZ2
 // Viewmodel FOV is no longer a cheat command so that it may be configured.
 ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_ARCHIVE );
@@ -678,6 +679,10 @@ void CViewRender::SetUpViews()
 	Vector ViewModelOrigin;
 	QAngle ViewModelAngles;
 
+#ifdef MAPBASE
+	view.fovViewmodel = g_pClientMode->GetViewModelFOV();
+#endif
+
 	if ( engine->IsHLTV() )
 	{
 		HLTVCamera()->CalcView( view.origin, view.angles, view.fov );
@@ -713,6 +718,18 @@ void CViewRender::SetUpViews()
 			bCalcViewModelView = true;
 			ViewModelOrigin = view.origin;
 			ViewModelAngles = view.angles;
+
+#ifdef MAPBASE
+			// Allow weapons to override viewmodel FOV
+			C_BaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
+			if (pWeapon && pWeapon->GetViewmodelFOVOverride() != 0.0f)
+			{
+				if (v_viewmodel_fov_script_override.GetFloat() > 0.0f)
+					view.fovViewmodel = v_viewmodel_fov_script_override.GetFloat();
+				else
+					view.fovViewmodel = pWeapon->GetViewmodelFOVOverride();
+			}
+#endif
 		}
 		else
 		{
@@ -748,7 +765,7 @@ void CViewRender::SetUpViews()
 
 	//Adjust the viewmodel's FOV to move with any FOV offsets on the viewer's end
 #ifdef MAPBASE
-	view.fovViewmodel = max(0.001f, g_pClientMode->GetViewModelFOV() - flFOVOffset);
+	view.fovViewmodel = max(0.001f, view.fovViewmodel - flFOVOffset);
 #else
 	view.fovViewmodel = g_pClientMode->GetViewModelFOV() - flFOVOffset;
 #endif

@@ -87,6 +87,12 @@ static bool g_bMapbaseCore;
 // The game's name found in gameinfo.txt. Mostly used for Discord RPC.
 char g_iszGameName[128];
 
+#ifdef GAME_DLL
+// Default player configuration
+char g_szDefaultPlayerModel[MAX_PATH];
+bool g_bDefaultPlayerDrawExternally;
+#endif
+
 enum
 {
 	MANIFEST_SOUNDSCRIPTS,
@@ -227,6 +233,11 @@ public:
 
 				Q_strncpy(g_iszGameName, pszGameName, sizeof(g_iszGameName));
 			}
+
+#ifdef GAME_DLL
+			Q_strncpy( g_szDefaultPlayerModel, gameinfo->GetString( "player_default_model", "models/player.mdl" ), sizeof( g_szDefaultPlayerModel ) );
+			g_bDefaultPlayerDrawExternally = gameinfo->GetBool( "player_default_draw_externally", false );
+#endif
 		}
 		gameinfo->deleteThis();
 

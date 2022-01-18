@@ -160,6 +160,7 @@ public:
 
 #ifdef MAPBASE
 			bool			IsRunningScriptedSceneWithFlexAndNotPaused( CBaseFlex *pActor, bool bIgnoreInstancedScenes, const char *pszNotThisScene = NULL );
+			bool			IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes = false );
 
 			CUtlVector< CHandle< CSceneEntity > > *GetActiveSceneList();
 #endif
@@ -490,7 +491,7 @@ public:
 
 	bool					HasUnplayedSpeech( void );
 	bool					HasFlexAnimation( void );
-#ifdef EZ2
+#ifdef MAPBASE
 	bool					IsPlayingSpeech( void );
 #endif
 
@@ -1165,7 +1166,7 @@ bool CSceneEntity::HasFlexAnimation( void )
 	return false;
 }
 
-#ifdef EZ2
+#ifdef MAPBASE
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Output : Returns true on success, false on failure.
@@ -2644,7 +2645,7 @@ bool CSceneEntity::CheckActors()
 					return false;
 				}
 			}
-#ifdef EZ2
+#ifdef MAPBASE
 			else if ( pTestActor->IsPlayer() )
 			{
 				// Blixibon - Player speech handling
@@ -6108,6 +6109,31 @@ bool CSceneManager::IsRunningScriptedSceneWithFlexAndNotPaused( CBaseFlex *pActo
 }
 
 
+bool CSceneManager::IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes )
+{
+	int c = m_ActiveScenes.Count();
+	for ( int i = 0; i < c; i++ )
+	{
+		CSceneEntity *pScene = m_ActiveScenes[ i ].Get();
+		if ( !pScene ||
+			 !pScene->IsPlayingBack() ||
+			 pScene->IsPaused() ||
+			 ( bIgnoreInstancedScenes && dynamic_cast<CInstancedSceneEntity *>(pScene) != NULL )
+			)
+		{
+			continue;
+		}
+		
+		if ( pScene->InvolvesActor( pActor ) )
+		{
+			if ( pScene->IsPlayingSpeech() )
+				return true;
+		}
+	}
+	return false;
+}
+
+
 CUtlVector< CHandle< CSceneEntity > > *CSceneManager::GetActiveSceneList()
 {
 	return &m_ActiveScenes;
@@ -6230,6 +6256,11 @@ bool IsRunningScriptedSceneWithSpeechAndNotPaused( CBaseFlex *pActor, bool bIgno
 bool IsRunningScriptedSceneWithFlexAndNotPaused( CBaseFlex *pActor, bool bIgnoreInstancedScenes, const char *pszNotThisScene )
 {
 	return GetSceneManager()->IsRunningScriptedSceneWithFlexAndNotPaused( pActor, bIgnoreInstancedScenes, pszNotThisScene );
+}
+
+bool IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes )
+{
+	return GetSceneManager()->IsTalkingInAScriptedScene( pActor, bIgnoreInstancedScenes );
 }
 
 CUtlVector< CHandle< CSceneEntity > > *GetActiveSceneList()

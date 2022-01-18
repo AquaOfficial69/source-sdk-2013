@@ -190,11 +190,11 @@ public:
 	bool CanSpeakAfterMyself();
 	float GetTimeSpeechComplete() const 	{ return m_flStopTalkTime; }
 	void  BlockSpeechUntil( float time );
-
-#ifdef EZ2
-	// Blixibon - Needed for Bad Cop speech to accurately determine if a NPC is still speaking
+	
+#ifdef MAPBASE
 	float GetRealTimeSpeechComplete() const	{ return m_flStopTalkTimeWithoutDelay; }
 #endif
+
 
 	// --------------------------------
 	
@@ -204,11 +204,10 @@ public:
 	void SetSpokeConcept( AIConcept_t concept, AI_Response *response, bool bCallback = true );
 	void ClearSpokeConcept( AIConcept_t concept );
 
-#ifdef EZ2
-	// Blixibon - Needed so Bad Cop doesn't respond to certain trivial concepts spoken by the enemy.
+#ifdef MAPBASE
 	AIConcept_t GetLastSpokeConcept( AIConcept_t excludeConcept = NULL );
 #endif
-	
+
 	// --------------------------------
 	
 	void SetVoicePitch( int voicePitch )	{ m_voicePitch = voicePitch; }

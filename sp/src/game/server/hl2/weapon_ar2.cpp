@@ -209,7 +209,7 @@ acttable_t *GetAR2Acttable()
 	return CWeaponAR2::m_acttable;
 }
 
-int GetSAR2ActtableCount()
+int GetAR2ActtableCount()
 {
 	return ARRAYSIZE(CWeaponAR2::m_acttable);
 }

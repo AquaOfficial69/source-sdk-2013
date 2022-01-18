@@ -1225,7 +1225,7 @@ void CAI_Expresser::ClearSpokeConcept( AIConcept_t concept )
 	m_ConceptHistories.Remove( concept );
 }
 
-#ifdef EZ2
+#ifdef MAPBASE
 //-------------------------------------
 
 AIConcept_t CAI_Expresser::GetLastSpokeConcept( AIConcept_t excludeConcept /* = NULL */ )
