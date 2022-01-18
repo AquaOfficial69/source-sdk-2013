@@ -46,10 +46,6 @@ bool IsRunningScriptedSceneWithFlexAndNotPaused( CBaseFlex *pActor, bool bIgnore
 bool IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes = false );
 CUtlVector< CHandle< CSceneEntity > > *GetActiveSceneList();
 #endif
-#ifdef EZ2
-// Blixibon - This was added so Bad Cop stops interrupting his one-line scenes.
-bool IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes = false );
-#endif
 float GetSceneDuration( char const *pszScene );
 float GetSceneSpeechDuration( char const* pszScene );
 int GetSceneSpeechCount( char const *pszScene );

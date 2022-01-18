@@ -165,10 +165,6 @@ public:
 			CUtlVector< CHandle< CSceneEntity > > *GetActiveSceneList();
 #endif
 
-#ifdef EZ2
-			bool			IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes = false );
-#endif
-
 
 private:
 
@@ -6140,32 +6136,6 @@ CUtlVector< CHandle< CSceneEntity > > *CSceneManager::GetActiveSceneList()
 }
 #endif
 
-#ifdef EZ2
-bool CSceneManager::IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes )
-{
-	int c = m_ActiveScenes.Count();
-	for ( int i = 0; i < c; i++ )
-	{
-		CSceneEntity *pScene = m_ActiveScenes[ i ].Get();
-		if ( !pScene ||
-			 !pScene->IsPlayingBack() ||
-			 pScene->IsPaused() ||
-			 ( bIgnoreInstancedScenes && dynamic_cast<CInstancedSceneEntity *>(pScene) != NULL )
-			)
-		{
-			continue;
-		}
-		
-		if ( pScene->InvolvesActor( pActor ) )
-		{
-			if ( pScene->IsPlayingSpeech() )
-				return true;
-		}
-	}
-	return false;
-}
-#endif
-
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -6266,13 +6236,6 @@ bool IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes )
 CUtlVector< CHandle< CSceneEntity > > *GetActiveSceneList()
 {
 	return GetSceneManager()->GetActiveSceneList();
-}
-#endif
-
-#ifdef EZ2
-bool IsTalkingInAScriptedScene( CBaseFlex *pActor, bool bIgnoreInstancedScenes )
-{
-	return GetSceneManager()->IsTalkingInAScriptedScene( pActor, bIgnoreInstancedScenes );
 }
 #endif
 
