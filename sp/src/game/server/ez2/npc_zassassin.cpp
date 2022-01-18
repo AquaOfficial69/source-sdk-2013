@@ -80,6 +80,7 @@ ConVar sk_zombie_assassin_dmg_whip ( "sk_zombie_assassin_dmg_whip", "35" );
 ConVar sk_zombie_assassin_dmg_spit ( "sk_zombie_assassin_dmg_spit", "15" );
 ConVar sk_zombie_assassin_spawn_time( "sk_zombie_assassin_spawn_time", "5.0" );
 ConVar sk_zombie_assassin_look_dist( "sk_zombie_assassin_look_dist", "1024.0" );
+ConVar sk_zombie_assassin_eatincombat_percent( "sk_zombie_assassin_eatincombat_percent", "1.0", FCVAR_NONE, "Below what percentage of health should gonomes eat during combat?" );
 
 //=========================================================
 // monster-specific schedule types
@@ -859,6 +860,13 @@ void CNPC_Gonome::HandleAnimEvent( animevent_t *pEvent )
 			
 				pHurt->SetAbsVelocity( pHurt->GetAbsVelocity() + (right * 200) );
 				pHurt->SetAbsVelocity( pHurt->GetAbsVelocity() + (up * 100) );
+
+				// If we were trying to spawn and hit something by accident, defer spawning for a while
+				if (m_bReadyToSpawn)
+				{
+					PredMsg( UTIL_VarArgs( "npc_zassassin '%s' tried to create a headcrab but hit something instead. Waiting %f seconds before retrying.", GetDebugName(), sk_zombie_assassin_spawn_time.GetFloat() ) );
+					m_flNextSpawnTime = gpGlobals->curtime + sk_zombie_assassin_spawn_time.GetFloat();
+				}
 			} 			
 			// Reusing this activity / animation event for headcrab spawning
 			else if ( m_bReadyToSpawn )
@@ -874,6 +882,7 @@ void CNPC_Gonome::HandleAnimEvent( animevent_t *pEvent )
 				// Wait a while before retrying
 				else
 				{
+					PredMsg( UTIL_VarArgs("npc_zassassin '%s' failed to create a headcrab. Waiting %f seconds before retrying.", GetDebugName(), sk_zombie_assassin_spawn_time.GetFloat()));
 					m_flNextSpawnTime = gpGlobals->curtime + sk_zombie_assassin_spawn_time.GetFloat();
 				}
 			}
@@ -970,6 +979,14 @@ void CNPC_Gonome::InputGoHomeInstant( inputdata_t &inputdata )
 float CNPC_Gonome::GetWhipDamage( void )
 {
 	return sk_zombie_assassin_dmg_whip.GetFloat();
+}
+
+//=========================================================
+// At what percentage health should this NPC seek food?
+//=========================================================
+float CNPC_Gonome::GetEatInCombatPercentHealth( void )
+{
+	return sk_zombie_assassin_eatincombat_percent.GetFloat();
 }
 
 // Overriden to play a sound when this NPC is killed by Hammer I/O

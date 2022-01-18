@@ -112,7 +112,7 @@ static ConVar v_centerspeed( "v_centerspeed","500" );
 // and motions look the most natural.
 ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_ARCHIVE );
 ConVar v_viewmodel_fov_script_override( "viewmodel_fov_script_override", "0", FCVAR_NONE, "If nonzero, overrides the viewmodel FOV of weapon scripts which override the viewmodel FOV." );
-#elif EZ2
+#elif EZ
 // Viewmodel FOV is no longer a cheat command so that it may be configured.
 ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_ARCHIVE );
 #else
