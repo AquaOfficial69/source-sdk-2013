@@ -179,6 +179,8 @@ BEGIN_ENT_SCRIPTDESC( CBaseCombatCharacter, CBaseFlex, "The base class shared by
 	DEFINE_SCRIPTFUNC_NAMED( ScriptEquipWeapon, "EquipWeapon", "Make the character equip the specified weapon entity. If they don't already own the weapon, they will acquire it instantly." )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptDropWeapon, "DropWeapon", "Make the character drop the specified weapon entity if they own it." )
 
+	DEFINE_SCRIPTFUNC_NAMED( ScriptGiveAmmo, "GiveAmmo", "Gives the specified amount of the specified ammo type. The third parameter is whether or not to suppress the ammo pickup sound. Returns the amount of ammo actually given, which is 0 if the player's ammo for this type is already full." )
+	DEFINE_SCRIPTFUNC_NAMED( ScriptRemoveAmmo, "RemoveAmmo", "Removes the specified amount of the specified ammo type." )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetAmmoCount, "GetAmmoCount", "Get the ammo count of the specified ammo type." )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptSetAmmoCount, "SetAmmoCount", "Set the ammo count of the specified ammo type." )
 
@@ -2839,6 +2841,35 @@ bool CBaseCombatCharacter::Weapon_CanUse( CBaseCombatWeapon *pWeapon )
 }
 
 #ifdef MAPBASE
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+static Activity Weapon_BackupActivityFromList( CBaseCombatCharacter *pBCC, acttable_t *pTable, int actCount, Activity activity, bool weaponTranslationWasRequired, CBaseCombatWeapon *pWeapon )
+{
+	int i = 0;
+	for ( ; i < actCount; i++, pTable++ )
+	{
+		if ( activity == pTable->baseAct )
+		{
+			// Don't pick backup activities we don't actually have an animation for.
+			if (!pBCC->GetModelPtr()->HaveSequenceForActivity(pTable->weaponAct))
+				break;
+
+			return (Activity)pTable->weaponAct;
+		}
+	}
+
+	// We didn't succeed in finding an activity. See if we can recurse
+	acttable_t *pBackupTable = CBaseCombatWeapon::GetDefaultBackupActivityList( pTable - i, actCount );
+	if (pBackupTable)
+	{
+		return Weapon_BackupActivityFromList( pBCC, pBackupTable, actCount, activity, weaponTranslationWasRequired, pWeapon );
+	}
+
+	return activity;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose:	Uses an activity from a different weapon when the activity we were originally looking for does not exist on this character.
 //			This gives NPCs and players the ability to use weapons they are otherwise unable to use.
@@ -2853,30 +2884,27 @@ Activity CBaseCombatCharacter::Weapon_BackupActivity( Activity activity, bool we
 	if (!pWeapon->SupportsBackupActivity(activity))
 		return activity;
 
-	// Sometimes, a NPC is supposed to use the default activity. Return that if the weapon translation was "not required" and we have an original activity.
-	// Don't do this with players.
+	// UNDONE: Sometimes, a NPC is supposed to use the default activity. Return that if the weapon translation was "not required" and we have an original activity.
+	/*
 	if (!weaponTranslationWasRequired && GetModelPtr()->HaveSequenceForActivity(activity) && !IsPlayer())
 	{
 		return activity;
 	}
+	*/
 
 	acttable_t *pTable = pWeapon->GetBackupActivityList();
-	if (pTable)
+	int actCount = pWeapon->GetBackupActivityListCount();
+	if (!pTable)
+	{
+		// Look for a default list
+		actCount = pWeapon->ActivityListCount();
+		pTable = CBaseCombatWeapon::GetDefaultBackupActivityList( pWeapon->ActivityList(), actCount );
+	}
+
+	if (pTable && GetModelPtr())
 	{
 		int actCount = pWeapon->GetBackupActivityListCount();
-		for ( int i = 0; i < actCount; i++, pTable++ )
-		{
-			if ( activity == pTable->baseAct )
-			{
-				// Don't pick backup activities we don't actually have an animation for.
-				if (GetModelPtr() ? !GetModelPtr()->HaveSequenceForActivity(pTable->weaponAct) : false)
-				{
-					return activity;
-				}
-
-				return (Activity)pTable->weaponAct;
-			}
-		}
+		return Weapon_BackupActivityFromList( this, pTable, actCount, activity, weaponTranslationWasRequired, pWeapon );
 	}
 
 	return activity;
@@ -4649,6 +4677,26 @@ void CBaseCombatCharacter::ScriptEquipWeapon( HSCRIPT hWeapon )
 
 		pWeapon->OnPickedUp( this );
 	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+int CBaseCombatCharacter::ScriptGiveAmmo( int iCount, int iAmmoIndex, bool bSuppressSound )
+{
+	return GiveAmmo( iCount, iAmmoIndex, bSuppressSound );
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+void CBaseCombatCharacter::ScriptRemoveAmmo( int iCount, int iAmmoIndex )
+{
+	if (iAmmoIndex == -1)
+	{
+		Warning( "%i is not a valid ammo type\n", iAmmoIndex );
+		return;
+	}
+
+	RemoveAmmo( iCount, iAmmoIndex );
 }
 
 //-----------------------------------------------------------------------------

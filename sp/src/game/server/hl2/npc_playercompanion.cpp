@@ -161,6 +161,10 @@ BEGIN_DATADESC( CNPC_PlayerCompanion )
 	DEFINE_INPUT( m_iGrenadeDropCapabilities, FIELD_INTEGER, "SetGrenadeDropCapabilities" ),
 #endif
 
+#ifdef COMPANION_MELEE_ATTACK
+	DEFINE_FIELD( m_nMeleeDamage, FIELD_INTEGER ),
+#endif
+
 END_DATADESC()
 
 //-----------------------------------------------------------------------------
