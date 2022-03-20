@@ -342,6 +342,8 @@ public:
 #ifdef EZ
 	virtual bool	IsDisplacementImpossible() { return m_bDisplacementImpossible; }
 	virtual void	SetDisplacementImpossible( bool displacementImpossible ) { m_bDisplacementImpossible = displacementImpossible; }
+
+	void	InputSetDisplacementImpossible( inputdata_t &inputdata ) { SetDisplacementImpossible( inputdata.value.Bool() ); }
 #endif
 
 	// animation needs
@@ -441,6 +443,8 @@ private:
 
 #ifdef EZ
 	bool				m_bDisplacementImpossible;
+
+	COutputEvent		m_OnConsumed;
 #endif
 
 	// was pev->frame

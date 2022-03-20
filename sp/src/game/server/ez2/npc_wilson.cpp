@@ -129,6 +129,8 @@ BEGIN_DATADESC(CNPC_Wilson)
 	DEFINE_INPUT( m_bOmniscient, FIELD_BOOLEAN, "SetOmniscient" ),
 
 	DEFINE_INPUT( m_bCanBeEnemy, FIELD_BOOLEAN, "SetCanBeEnemy" ),
+	
+	DEFINE_INPUT( m_bAutoSetLocator, FIELD_BOOLEAN, "AutoSetLocator" ),
 
 	DEFINE_KEYFIELD( m_bEyeLightEnabled, FIELD_BOOLEAN, "EyeLightEnabled" ),
 	//DEFINE_FIELD( m_iEyeLightBrightness, FIELD_INTEGER ), // SetEyeGlow()'s call in Activate() means we don't need to save this
@@ -315,6 +317,15 @@ void CNPC_Wilson::Spawn()
 		// Get a tesla effect on our hitboxes permanently
 		SetContextThink( &CNPC_Wilson::TeslaThink, gpGlobals->curtime, g_DamageZapContext );
 		m_flTeslaStopTime = FLT_MAX;
+	}
+	
+	if (m_bAutoSetLocator && UTIL_GetLocalPlayer())
+	{
+		CHL2_Player *pPlayer = assert_cast<CHL2_Player*>( UTIL_GetLocalPlayer() );
+		{
+			// Note that this will override any existing locator target entity
+			pPlayer->SetLocatorTargetEntity( this );
+		}
 	}
 
 	SetUse( &CNPC_Wilson::Use );
@@ -986,6 +997,21 @@ void CNPC_Wilson::OnFriendDamaged( CBaseCombatCharacter *pSquadmate, CBaseEntity
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+bool CNPC_Wilson::IsValidEnemy( CBaseEntity *pEnemy )
+{
+	if (!BaseClass::IsValidEnemy( pEnemy ))
+		return false;
+
+	// HACKHACK: Just completely ignore bullseyes for now
+	if (pEnemy->Classify() == CLASS_BULLSEYE)
+		return false;
+
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 bool CNPC_Wilson::CanBeAnEnemyOf( CBaseEntity *pEnemy )
 { 
 	// Don't be anyone's enemy unless it's needed for something
@@ -1388,14 +1414,30 @@ bool CNPC_Wilson::HandleInteraction(int interactionType, void *data, CBaseCombat
 	// Change eye while being scanned
 	if ( interactionType == g_interactionArbeitScannerStart )
 	{
+		AI_CriteriaSet modifiers;
+		if (data)
+		{
+			CArbeitScanner *pScanner = assert_cast<CArbeitScanner*>(data);
+			if (pScanner)
+				pScanner->AppendContextToCriteria( modifiers );
+		}
+
 		SetEyeState(TURRET_EYE_SEEKING_TARGET);
-		SpeakIfAllowed( TLK_SCAN_START );
+		SpeakIfAllowed( TLK_SCAN_START, modifiers );
 		return true;
 	}
 	if ( interactionType == g_interactionArbeitScannerEnd )
 	{
+		AI_CriteriaSet modifiers;
+		if (data)
+		{
+			CArbeitScanner *pScanner = assert_cast<CArbeitScanner*>(data);
+			if (pScanner)
+				pScanner->AppendContextToCriteria( modifiers );
+		}
+
 		SetEyeState(TURRET_EYE_DORMANT);
-		SpeakIfAllowed( TLK_SCAN_END );
+		SpeakIfAllowed( TLK_SCAN_END, modifiers );
 		return true;
 	}
 
@@ -2307,7 +2349,7 @@ void CArbeitScanner::ScanThink()
 			m_pSprite->SetAttachment( this, m_iScanAttachment );
 		}
 
-		m_hScanning->DispatchInteraction(g_interactionArbeitScannerStart, NULL, NULL);
+		m_hScanning->DispatchInteraction(g_interactionArbeitScannerStart, this, NULL);
 
 		// Check if we should scan indefinitely
 		if (m_flScanTime == -1.0f)
@@ -2374,7 +2416,7 @@ void CArbeitScanner::CleanupScan(bool dispatchInteraction)
 	if (m_hScanning)
 	{
 		if( dispatchInteraction )
-			m_hScanning->DispatchInteraction(g_interactionArbeitScannerEnd, NULL, NULL);
+			m_hScanning->DispatchInteraction(g_interactionArbeitScannerEnd, this, NULL);
 		
 		m_hScanning = NULL;
 	}

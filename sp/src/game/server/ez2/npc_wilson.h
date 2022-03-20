@@ -89,6 +89,8 @@ public:
 	int 			TranslateSchedule( int scheduleType );
 
 	void			OnSeeEntity( CBaseEntity *pEntity );
+	bool			Remark( AI_CriteriaSet &modifiers, CBaseEntity *pRemarkable ) { return SpeakIfAllowed( TLK_REMARK, modifiers ); }
+	
 	void 			OnFriendDamaged( CBaseCombatCharacter *pSquadmate, CBaseEntity *pAttacker );
 
 	void			AimGun();
@@ -153,6 +155,8 @@ public:
 	void			InputDisableMotion( inputdata_t &inputdata );
 
 	int		BloodColor( void ) { return DONT_BLEED; }
+
+	bool	IsValidEnemy( CBaseEntity *pEnemy );
 
 	// By default, Will-E doesn't attack anyone and nobody attacks him. (although he does see enemies for BC, see IRelationType)
 	// You can make NPCs attack him with m_bCanBeEnemy, but Will-E is literally incapable of combat.
@@ -240,6 +244,9 @@ protected:
 
 	// See CNPC_Wilson::CanBeAnEnemyOf().
 	bool	m_bCanBeEnemy;
+ 
+	// Sets the player's target locator to this Wilson automatically.
+	bool	m_bAutoSetLocator;
 
 	// Enables a projected texture spotlight on the client.
 	CNetworkVar( bool, m_bEyeLightEnabled );
