@@ -32,6 +32,10 @@ public:
 #ifdef EZ
 	virtual void Event_SkillChanged(int iSkillLevel, IGameEvent * event) {}
 #endif
+#ifdef EZ2
+	virtual void Event_XenGrenade( float flMass, IGameEvent * event );
+	virtual void Event_EntityKicked( CBaseEntity *pVictim, CBaseEntity *pAttacker, CBaseEntity *pInflictor, IGameEvent *event );
+#endif
 
 	int GetAchievementID() { return m_iAchievementID; }
 	void SetAchievementID( int iAchievementID ) { m_iAchievementID = iAchievementID; }
@@ -204,6 +208,27 @@ class CMapAchievement : public CBaseAchievement
 	}
 };
 
+#ifdef EZ
+class CSquadAchievement : public CBaseAchievement
+{
+	virtual void Init()
+	{
+		SetFlags( ACH_LISTEN_MAP_EVENTS | ACH_SAVE_GLOBAL );
+		SetGoal( 1 );
+	}
+
+	virtual const char *GetEvaluationEventName() =0;
+
+	virtual void OnMapEvent( const char *pEventName );
+
+protected:
+	void SetSquadFilter( const char *pClassName );
+
+private:
+	const char *m_pSquadClassNameFilter;				// if non-NULL, squad member class name to filter with
+
+};
+#endif
 
 //----------------------------------------------------------------------------------------------------------------
 class CAchievement_AchievedCount : public CBaseAchievement
