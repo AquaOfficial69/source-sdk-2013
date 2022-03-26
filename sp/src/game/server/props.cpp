@@ -5370,6 +5370,11 @@ bool CBasePropDoor::HandleInteraction( int interactionType, void *data, CBaseCom
 
 			// Open the door away from the source entity if you can
 			OpenIfUnlocked( sourceEnt, sourceEnt );
+
+			// Return successful if we're opening
+			KickInfo_t *info = static_cast<KickInfo_t*>(data);
+			if (info)
+				info->success = IsDoorOpening();
 		}
 
 		return true;

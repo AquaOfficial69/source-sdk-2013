@@ -406,7 +406,7 @@ protected:
 	}
 
 	// map event where achievement is activated
-	virtual const char *GetActivationEventName() { return "EZ2_COMPLETE_C2"; }
+	virtual const char *GetActivationEventName() { return "EZ2_START_KILL_BEAST"; }
 	// map event where achievement is evaluated for success
 	virtual const char *GetEvaluationEventName() { return "EZ2_COMPLETE_C3"; }
 };
@@ -437,7 +437,7 @@ protected:
 	// map event where achievement is activated
 	virtual const char *GetActivationEventName() { return "EZ2_START_XENT"; }
 	// map event where achievement is evaluated for success
-	virtual const char *GetEvaluationEventName() { return "ACH_EZ2_CH4a"; }
+	virtual const char *GetEvaluationEventName() { return "EZ2_COMPLETE_C4a"; }
 };
 DECLARE_ACHIEVEMENT( CAchievementEZ2KillTwoGonomes, ACHIEVEMENT_EZ2_KILL_TWOGONOMES, "ACH_EZ2_KILL_TWOGONOMES", 5 );
 
@@ -455,7 +455,7 @@ protected:
 
 	// map event where achievement is activated\
 	// In this case we don't track the achievement until the conclusion of Chapter 5 to exclude any custom maps
-	virtual const char *GetActivationEventName() { return "EZ2_COMPLETE_C5"; }
+	virtual const char *GetActivationEventName() { return "EZ2_START_KILL_ADVISOR"; }
 	// map event where achievement is evaluated for success
 	// This event has nothing to do with this achievement, but we need an evaluation event that will fire after this one is concluded
 	virtual const char *GetEvaluationEventName() { return "EZ2_STILL_ALIVE"; }
@@ -672,8 +672,6 @@ DECLARE_ACHIEVEMENT( CAchievementEZ2XenGrenadeWeight, ACHIEVEMENT_EZ2_XENGRENADE
 // Kick Achievements
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// TODO - We might need a way to make the door kicking achievement "remember" previously kicked doors
-// For now allowing any door kick
 class CAchievementEZ2KickDoors : public CBaseAchievement
 {
 protected:
@@ -685,6 +683,16 @@ protected:
 		SetFlags( ACH_LISTEN_KICK_EVENTS | ACH_SAVE_GLOBAL );
 		SetGameDirFilter( "EntropyZero2" );
 		SetGoal( KICK_DOORS_COUNT );
+	}
+
+	virtual void Event_EntityKicked( CBaseEntity *pVictim, CBaseEntity *pAttacker, CBaseEntity *pInflictor, IGameEvent *event )
+	{
+		// We only want one kick per entity
+		int iIndex = pVictim->FindContextByName( "kicked" );
+		if (iIndex != -1 && atoi( pVictim->GetContextValue( iIndex ) ) > 0)
+			return;
+
+		IncrementCount();
 	}
 
 	// Show progress for this achievement
@@ -744,6 +752,70 @@ protected:
 
 };
 DECLARE_ACHIEVEMENT( CAchievementEZ2SquadChapter2, ACHIEVEMENT_EZ2_SQUAD_CH2, "ACH_EZ2_SQUAD_CH2", 5 );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Misc. Event Achievements
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CAchievementEZ2FlipAPC : public CBaseAchievement
+{
+protected:
+
+	void Init() 
+	{
+		SetFlags( ACH_LISTEN_MAP_EVENTS | ACH_SAVE_WITH_GAME );
+		SetGameDirFilter( "EntropyZero2" );
+		SetGoal( 1 );
+	}
+
+	virtual void ListenForEvents()
+	{
+		ListenForGameEvent( "vehicle_overturned" );
+	}
+
+	void FireGameEvent_Internal( IGameEvent *event )
+	{
+		if ( 0 == Q_strcmp( event->GetName(), "vehicle_overturned" ) )
+		{
+			IncrementCount();
+		}
+	}
+};
+DECLARE_ACHIEVEMENT( CAchievementEZ2FlipAPC, ACHIEVEMENT_EZ2_FLIP_APC, "ACH_EZ2_FLIP_APC", 5 );
+
+class CAchievementEZ2HealedBySurrenderedMedic : public CBaseAchievement
+{
+protected:
+
+	void Init() 
+	{
+		SetFlags( ACH_LISTEN_MAP_EVENTS | ACH_SAVE_WITH_GAME );
+		SetGameDirFilter( "EntropyZero2" );
+		SetGoal( 1 );
+	}
+
+	virtual void ListenForEvents()
+	{
+		ListenForGameEvent( "medic_heal_player" );
+	}
+
+	void FireGameEvent_Internal( IGameEvent *event )
+	{
+		if ( 0 == Q_strcmp( event->GetName(), "medic_heal_player" ) )
+		{
+			CBaseEntity *pEnt = UTIL_EntityByIndex( event->GetInt( "medic", 0 ) );
+			if (!pEnt || !pEnt->ClassMatches("npc_citizen"))
+				return;
+
+			CNPC_Citizen *pCitizen = static_cast<CNPC_Citizen*>(pEnt);
+			if (!pCitizen->IsSurrendered())
+				return;
+
+			IncrementCount();
+		}
+	}
+};
+DECLARE_ACHIEVEMENT( CAchievementEZ2HealedBySurrenderedMedic, ACHIEVEMENT_EZ2_SURRENDERED_HEAL, "ACH_EZ2_SURRENDERED_HEAL", 5 );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
