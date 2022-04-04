@@ -118,6 +118,9 @@ ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_ARCHIVE );
 #else
 ConVar v_viewmodel_fov( "viewmodel_fov", "54", FCVAR_CHEAT );
 #endif
+#ifdef CSS_WEAPONS_IN_HL2 // This code originates from Mapbase v7.0. In the event of a merge conflict, it should take precedence over this code.
+ConVar v_viewmodel_fov_script_override( "viewmodel_fov_script_override", "0", FCVAR_NONE, "If nonzero, overrides the viewmodel FOV of weapon scripts which override the viewmodel FOV." );
+#endif
 ConVar mat_viewportscale( "mat_viewportscale", "1.0", FCVAR_ARCHIVE, "Scale down the main viewport (to reduce GPU impact on CPU profiling)", true, (1.0f / 640.0f), true, 1.0f );
 ConVar mat_viewportupscale( "mat_viewportupscale", "1", FCVAR_ARCHIVE, "Scale the viewport back up" );
 ConVar cl_leveloverview( "cl_leveloverview", "0", FCVAR_CHEAT );
@@ -678,7 +681,7 @@ void CViewRender::SetUpViews()
 	bool bCalcViewModelView = false;
 	Vector ViewModelOrigin;
 	QAngle ViewModelAngles;
-
+	
 #ifdef MAPBASE
 	view.fovViewmodel = g_pClientMode->GetViewModelFOV();
 #endif
@@ -764,7 +767,7 @@ void CViewRender::SetUpViews()
 	float flFOVOffset = fDefaultFov - view.fov;
 
 	//Adjust the viewmodel's FOV to move with any FOV offsets on the viewer's end
-#ifdef MAPBASE
+#ifdef CSS_WEAPONS_IN_HL2 // This code originates from Mapbase v7.0. In the event of a merge conflict, it should take precedence over this code.
 	view.fovViewmodel = max(0.001f, view.fovViewmodel - flFOVOffset);
 #else
 	view.fovViewmodel = g_pClientMode->GetViewModelFOV() - flFOVOffset;

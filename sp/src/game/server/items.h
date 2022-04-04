@@ -38,6 +38,17 @@
 #define SIZE_AMMO_CROSSBOW			6
 #define	SIZE_AMMO_AR2_ALTFIRE		1
 
+#ifdef CSS_WEAPONS_IN_HL2
+#define SIZE_AMMO_45ACP				20
+#define SIZE_AMMO_45ACP_LARGE		60
+#define SIZE_AMMO_357SIG			13
+#define SIZE_AMMO_357SIG_LARGE		39
+#define SIZE_AMMO_556mm			30
+#define SIZE_AMMO_556mm_LARGE		60
+#define SIZE_AMMO_762mm			30
+#define SIZE_AMMO_762mm_LARGE		60
+#endif
+
 #define SF_ITEM_START_CONSTRAINED	0x00000001
 #ifdef MAPBASE
 // Copied from CBaseCombatWeapon's flags, including any additions we made to those.
@@ -107,9 +118,8 @@ public:
 #endif
 
 #ifdef EZ
-	// TODO: Maybe make EZ_VARIANT a shared enum instead of being within CAI_BaseNPC?
-	typedef CAI_BaseNPC::EZ_VARIANT EZ_VARIANT_ITEM;
-	EZ_VARIANT_ITEM m_tEzVariant;
+	EZ_VARIANT	GetEZVariant() { return m_tEzVariant; }
+	void		SetEZVariant( EZ_VARIANT variant ) { m_tEzVariant = variant; }
 #endif
 
 	DECLARE_DATADESC();
@@ -125,6 +135,10 @@ private:
 	QAngle		m_vOriginalSpawnAngles;
 
 	IPhysicsConstraint		*m_pConstraint;
+
+#ifdef EZ
+	EZ_VARIANT	m_tEzVariant;
+#endif
 };
 
 #endif // ITEMS_H

@@ -1853,7 +1853,7 @@ void CNPC_CombineDropship::InputDropCargo( inputdata_t &inputdata )
 	{
 		vecAbsVelocity.z = 0.0f;
 	}
-	if ( m_hContainer->GetHealth() > 0 )
+	if ( m_hContainer->GetHealth() > 0 || m_hContainer->GetServerVehicle() != NULL )
 	{
 		vecAbsVelocity = vec3_origin;
 	}

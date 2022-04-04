@@ -1862,19 +1862,15 @@ void CBaseCombatCharacter::Event_Killed( const CTakeDamageInfo &info )
 #ifdef EZ
 		CBaseEntity *pItem = CBaseEntity::CreateNoSpawn( "item_healthvial", GetAbsOrigin(), GetAbsAngles() );
 
-		if (IsNPC())
+		if (pItem)
 		{
-			if (MyNPCPointer()->m_tEzVariant != CAI_BaseNPC::EZ_VARIANT_DEFAULT)
-			{
-				// Make the item match our variant
-				CItem *pCItem = dynamic_cast<CItem*>(pItem);
-				if (pCItem)
-					pCItem->m_tEzVariant = MyNPCPointer()->m_tEzVariant;
+			// Make the item match our variant
+			pItem->SetEZVariant( GetEZVariant() );
 
 #ifdef MAPBASE
+			if (IsNPC())
 				MyNPCPointer()->m_OnItemDrop.Set( pItem, pItem, this );
 #endif
-			}
 		}
 
 		DispatchSpawn( pItem );

@@ -623,11 +623,11 @@ public:
 	{
 		PrecacheParticleSystem( "combineball" );
 #ifdef EZ
-		SetModelName( AllocPooledString( pModelNames[m_tEzVariant] ) );
+		SetModelName( AllocPooledString( pModelNames[ GetEZVariant() ] ) );
 		PrecacheModel( STRING( GetModelName() ) );
 
 		// Goo-covered is just a separate skin of the Arbeit model
-		if (m_tEzVariant == CAI_BaseNPC::EZ_VARIANT_RAD)
+		if (GetEZVariant() == EZ_VARIANT_RAD)
 			m_nSkin = 1;
 #else
 		PrecacheModel ("models/items/combine_rifle_ammo01.mdl");
@@ -666,13 +666,159 @@ public:
 LINK_ENTITY_TO_CLASS( item_ammo_ar2_altfire, CItem_AR2AltFireRound );
 
 #ifdef EZ
-const char *CItem_AR2AltFireRound::pModelNames[CAI_BaseNPC::EZ_VARIANT_COUNT] = {
+const char *CItem_AR2AltFireRound::pModelNames[EZ_VARIANT_COUNT] = {
 	"models/items/combine_rifle_ammo01.mdl",
 	"models/items/xen/combine_rifle_ammo01.mdl",
 	"models/items/arbeit/combine_rifle_ammo01.mdl", // Skin 1
 	"models/items/temporal/combine_rifle_ammo01.mdl",
 	"models/items/arbeit/combine_rifle_ammo01.mdl",
 };
+#endif
+
+#ifdef CSS_WEAPONS_IN_HL2
+// ========================================================================
+//	>> Box45ACPRounds
+// ========================================================================
+class CItem_Box45ACPRounds : public CItem
+{
+public:
+	DECLARE_CLASS( CItem_Box45ACPRounds, CItem );
+
+	void Spawn( void )
+	{ 
+		Precache( );
+		SetModel( "models/items/45acp_box.mdl" );
+		BaseClass::Spawn( );
+	}
+	void Precache( void )
+	{
+		PrecacheModel ("models/items/45acp_box.mdl");
+	}
+	bool MyTouch( CBasePlayer *pPlayer )
+	{
+		if (ITEM_GiveAmmo( pPlayer, !IsLarge() ? SIZE_AMMO_45ACP : SIZE_AMMO_45ACP_LARGE, "45ACP"))
+		{
+			if ( g_pGameRules->ItemShouldRespawn( this ) == GR_ITEM_RESPAWN_NO )
+			{
+				UTIL_Remove(this);	
+			}
+
+			return true;
+		}
+		return false;
+	}
+	inline bool IsLarge() { return ClassMatches("item_css_ammo_45acp_large"); }
+};
+LINK_ENTITY_TO_CLASS( item_css_ammo_45acp, CItem_Box45ACPRounds );
+LINK_ENTITY_TO_CLASS( item_css_ammo_45acp_large, CItem_Box45ACPRounds );
+
+// ========================================================================
+//	>> Box357SIGRounds
+// ========================================================================
+class CItem_Box357SIGRounds : public CItem
+{
+public:
+	DECLARE_CLASS( CItem_Box357SIGRounds, CItem );
+
+	void Spawn( void )
+	{ 
+		Precache( );
+		SetModel( "models/items/357sig_box.mdl" );
+		BaseClass::Spawn( );
+	}
+	void Precache( void )
+	{
+		PrecacheModel ("models/items/357sig_box.mdl");
+	}
+	bool MyTouch( CBasePlayer *pPlayer )
+	{
+		if (ITEM_GiveAmmo( pPlayer, !IsLarge() ? SIZE_AMMO_357SIG : SIZE_AMMO_357SIG_LARGE, "357SIG"))
+		{
+			if ( g_pGameRules->ItemShouldRespawn( this ) == GR_ITEM_RESPAWN_NO )
+			{
+				UTIL_Remove(this);	
+			}
+
+			return true;
+		}
+		return false;
+	}
+	inline bool IsLarge() { return ClassMatches("item_css_ammo_357sig_large"); }
+};
+LINK_ENTITY_TO_CLASS( item_css_ammo_357sig, CItem_Box357SIGRounds );
+LINK_ENTITY_TO_CLASS( item_css_ammo_357sig_large, CItem_Box357SIGRounds );
+
+// ========================================================================
+//	>> Box556mmRounds
+// ========================================================================
+class CItem_Box556mmRounds : public CItem
+{
+public:
+	DECLARE_CLASS( CItem_Box556mmRounds, CItem );
+
+	void Spawn( void )
+	{ 
+		Precache( );
+		SetModel( "models/items/556mm_box.mdl" );
+		BaseClass::Spawn( );
+	}
+	void Precache( void )
+	{
+		PrecacheModel ("models/items/556mm_box.mdl");
+	}
+	bool MyTouch( CBasePlayer *pPlayer )
+	{
+		if (ITEM_GiveAmmo( pPlayer, !IsLarge() ? SIZE_AMMO_556mm : SIZE_AMMO_556mm_LARGE, "556mm"))
+		{
+			if ( g_pGameRules->ItemShouldRespawn( this ) == GR_ITEM_RESPAWN_NO )
+			{
+				UTIL_Remove(this);	
+			}
+
+			return true;
+		}
+		return false;
+	}
+	inline bool IsLarge() { return ClassMatches("item_css_ammo_556mm_large"); }
+};
+LINK_ENTITY_TO_CLASS( item_css_ammo_556mm, CItem_Box556mmRounds );
+LINK_ENTITY_TO_CLASS( item_css_ammo_556mm_large, CItem_Box556mmRounds );
+
+// ========================================================================
+//	>> Box762mmRounds
+// ========================================================================
+class CItem_Box762mmRounds : public CItem
+{
+public:
+	DECLARE_CLASS( CItem_Box762mmRounds, CItem );
+
+	void Spawn( void )
+	{ 
+		Precache( );
+		SetModel( "models/items/762mm_box.mdl" );
+		BaseClass::Spawn( );
+	}
+	void Precache( void )
+	{
+		PrecacheModel ("models/items/762mm_box.mdl");
+	}
+	bool MyTouch( CBasePlayer *pPlayer )
+	{
+		if (ITEM_GiveAmmo( pPlayer, !IsLarge() ? SIZE_AMMO_762mm : SIZE_AMMO_762mm_LARGE, "762mm"))
+		{
+			if ( g_pGameRules->ItemShouldRespawn( this ) == GR_ITEM_RESPAWN_NO )
+			{
+				UTIL_Remove(this);	
+			}
+
+			return true;
+		}
+		return false;
+	}
+	inline bool IsLarge() { return ClassMatches("item_css_ammo_762mm_large"); }
+};
+LINK_ENTITY_TO_CLASS( item_css_ammo_762mm, CItem_Box762mmRounds );
+LINK_ENTITY_TO_CLASS( item_css_ammo_762mm_large, CItem_Box762mmRounds );
 #endif
 
 // ==================================================================
@@ -1179,6 +1325,8 @@ public:
 			SetModelName( AllocPooledString( "models/items/xen_grenade_holder001a.mdl" ) );
 
 		PrecacheModel( STRING( GetModelName() ) );
+
+		UTIL_PrecacheOther( "weapon_hopwire" );
 	}
 
 	bool KeyValue( const char *szKeyName, const char *szValue )

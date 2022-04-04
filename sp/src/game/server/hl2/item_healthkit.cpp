@@ -59,7 +59,7 @@ END_DATADESC()
 #endif
 
 #ifdef EZ
-const char *CHealthKit::pModelNames[CAI_BaseNPC::EZ_VARIANT_COUNT] = {
+const char *CHealthKit::pModelNames[EZ_VARIANT_COUNT] = {
 	"models/items/healthkit.mdl",
 	"models/items/xen/healthkit.mdl",
 	"models/items/arbeit/healthkit.mdl", // Skin 1
@@ -67,7 +67,7 @@ const char *CHealthKit::pModelNames[CAI_BaseNPC::EZ_VARIANT_COUNT] = {
 	"models/items/arbeit/healthkit.mdl",
 };
 
-const char *CHealthKit::pTouchSounds[CAI_BaseNPC::EZ_VARIANT_COUNT] = {
+const char *CHealthKit::pTouchSounds[EZ_VARIANT_COUNT] = {
 	"HealthKit.Touch",
 	"HealthKit_Xen.Touch",
 	"HealthKit_Rad.Touch",
@@ -99,14 +99,14 @@ void CHealthKit::Spawn( void )
 void CHealthKit::Precache( void )
 {
 #ifdef EZ
-	SetModelName( AllocPooledString( pModelNames[m_tEzVariant] ) );
+	SetModelName( AllocPooledString( pModelNames[ GetEZVariant() ] ) );
 	PrecacheModel( STRING( GetModelName() ) );
 
 	// Goo-covered is just a separate skin of the Arbeit model
-	if (m_tEzVariant == CAI_BaseNPC::EZ_VARIANT_RAD)
+	if (GetEZVariant() == EZ_VARIANT_RAD)
 		m_nSkin = 1;
 
-	PrecacheScriptSound( pTouchSounds[m_tEzVariant] );
+	PrecacheScriptSound( pTouchSounds[ GetEZVariant() ] );
 #else
 	PrecacheModel("models/items/healthkit.mdl");
 
@@ -136,8 +136,8 @@ bool CHealthKit::MyTouch( CBasePlayer *pPlayer )
 		MessageEnd();
 
 #ifdef EZ
-		CPASAttenuationFilter filter( pPlayer, pTouchSounds[m_tEzVariant] );
-		EmitSound( filter, pPlayer->entindex(), pTouchSounds[m_tEzVariant] );
+		CPASAttenuationFilter filter( pPlayer, pTouchSounds[ GetEZVariant() ] );
+		EmitSound( filter, pPlayer->entindex(), pTouchSounds[ GetEZVariant() ] );
 #else
 		CPASAttenuationFilter filter( pPlayer, "HealthKit.Touch" );
 		EmitSound( filter, pPlayer->entindex(), "HealthKit.Touch" );
@@ -182,14 +182,14 @@ public:
 	void Precache( void )
 	{
 #ifdef EZ
-		SetModelName( AllocPooledString( pModelNames[m_tEzVariant] ) );
+		SetModelName( AllocPooledString( pModelNames[ GetEZVariant() ] ) );
 		PrecacheModel( STRING( GetModelName() ) );
 
 		// Goo-covered is just a separate skin of the Arbeit model
-		if (m_tEzVariant == CAI_BaseNPC::EZ_VARIANT_RAD)
+		if (GetEZVariant() == EZ_VARIANT_RAD)
 			m_nSkin = 1;
 
-		PrecacheScriptSound( pTouchSounds[m_tEzVariant] );
+		PrecacheScriptSound( pTouchSounds[ GetEZVariant() ] );
 #else
 		PrecacheModel( "models/healthvial.mdl" );
 
@@ -213,8 +213,8 @@ public:
 			MessageEnd();
 
 #ifdef EZ
-			CPASAttenuationFilter filter( pPlayer, pTouchSounds[m_tEzVariant] );
-			EmitSound( filter, pPlayer->entindex(), pTouchSounds[m_tEzVariant] );
+			CPASAttenuationFilter filter( pPlayer, pTouchSounds[ GetEZVariant() ] );
+			EmitSound( filter, pPlayer->entindex(), pTouchSounds[ GetEZVariant() ] );
 #else
 			CPASAttenuationFilter filter( pPlayer, "HealthVial.Touch" );
 			EmitSound( filter, pPlayer->entindex(), "HealthVial.Touch" );
@@ -262,7 +262,7 @@ BEGIN_DATADESC( CHealthVial )
 END_DATADESC()
 
 #ifdef EZ
-const char *CHealthVial::pModelNames[CAI_BaseNPC::EZ_VARIANT_COUNT] = {
+const char *CHealthVial::pModelNames[EZ_VARIANT_COUNT] = {
 	"models/healthvial.mdl",
 	"models/items/xen/healthvial.mdl",
 	"models/items/arbeit/healthvial.mdl", // Skin 1
@@ -270,7 +270,7 @@ const char *CHealthVial::pModelNames[CAI_BaseNPC::EZ_VARIANT_COUNT] = {
 	"models/items/arbeit/healthvial.mdl",
 };
 
-const char *CHealthVial::pTouchSounds[CAI_BaseNPC::EZ_VARIANT_COUNT] = {
+const char *CHealthVial::pTouchSounds[EZ_VARIANT_COUNT] = {
 	"HealthVial.Touch",
 	"HealthVial_Xen.Touch",
 	"HealthVial_Rad.Touch",
