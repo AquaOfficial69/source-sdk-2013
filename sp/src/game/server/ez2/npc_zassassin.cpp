@@ -340,7 +340,6 @@ void CNPC_Gonome::Precache()
 			break;
 		case EZ_VARIANT_RAD:
 			SetModelName( AllocPooledString( "models/glownome.mdl" ) );
-			PrecacheMaterial( "cable/goocable.vmt" );
 			break;
 		default:
 			SetModelName( AllocPooledString( "models/gonome.mdl" ) );
@@ -355,6 +354,7 @@ void CNPC_Gonome::Precache()
 	{
 		PrecacheParticleSystem( "blood_impact_blue_01" );
 		m_nGonomeSpitSprite = PrecacheModel( "sprites/glownomespit.vmt" );// spit projectile.
+		PrecacheMaterial( "cable/goocable.vmt" );
 	}
 	else
 	{
@@ -375,6 +375,7 @@ void CNPC_Gonome::Precache()
 	PrecacheScriptSound( "Gonome.RunFootstepRight" );
 	PrecacheScriptSound( "Gonome.FootstepLeft" );
 	PrecacheScriptSound( "Gonome.FootstepRight" );
+	PrecacheScriptSound( "Gonome.JumpLand" );
 	PrecacheScriptSound( "Gonome.Eat" );
 	PrecacheScriptSound( "Gonome.BeginSpawnCrab" );
 	PrecacheScriptSound( "Gonome.EndSpawnCrab" );
@@ -462,6 +463,21 @@ int CNPC_Gonome::SelectFailSchedule( int failedSchedule, int failedTask, AI_Task
 	}
 
 	return base;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Allows for modification of the interrupt mask for the current schedule.
+//			In the most cases the base implementation should be called first.
+//-----------------------------------------------------------------------------
+void CNPC_Gonome::BuildScheduleTestBits()
+{
+	BaseClass::BuildScheduleTestBits();
+
+	// Beast behavior must be able to interrupt our schedules
+	if (!m_BeastBehavior.IsRunning())
+	{
+		SetCustomInterruptCondition( COND_PROVOKED );
+	}
 }
 
 //=========================================================
@@ -730,18 +746,19 @@ void CNPC_Gonome::HandleAnimEvent( animevent_t *pEvent )
 
 					// Material Sound
 					EmitSound_t params;
-					params.m_pSoundName = physprops->GetString( psurf->sounds.impactHard );
-
-					CPASAttenuationFilter filter( this, params.m_pSoundName );
-
-					params.m_bWarnOnDirectWaveReference = true;
-					params.m_flVolume = 0.5f;
-					EmitSound( filter, entindex(), params );
+					//params.m_pSoundName = physprops->GetString( psurf->sounds.impactHard );
+					//
+					//CPASAttenuationFilter filter( this, params.m_pSoundName );
+					//
+					//params.m_bWarnOnDirectWaveReference = true;
+					//params.m_flVolume = 0.5f;
+					//EmitSound( filter, entindex(), params );
 
 					// Land Sound
 					params.m_pSoundName = pEvent->options;
-					filter.Filter( GetSoundEmissionOrigin(), CBaseEntity::LookupSoundLevel( params.m_pSoundName ) );
-					EmitSound( filter, entindex(), params );
+					params.m_flVolume = 1.0f;
+					CPASAttenuationFilter filter2( this, params.m_pSoundName );
+					EmitSound( filter2, entindex(), params );
 				}
 			}
 		}

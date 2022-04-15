@@ -379,6 +379,7 @@ static const char *g_ppszModelLocs[] =
 	"Group03x", // May wish to change this to "Group04%s" IF a brute and medic version of the long fall rebel are created - then we can have Group04, Group04b, Group04m
 	"Group04%s",
 	"Group05",
+	"Group05b",
 };
 
 #define IsExcludedHead( type, bMedic, iHead) false // see XBox codeline for an implementation
@@ -752,7 +753,7 @@ void CNPC_Citizen::Spawn()
 		// Randomize brute mask skin based on entity index
 		m_nSkin = entindex() % BRUTE_MASK_NUM_SKINS;
 	}
-	else if ( m_Type >= CT_BRUTE && m_Type <= CT_ARBEIT ) // CT_BRUTE, CT_LONGFALL, CT_ARCTIC, CT_ARBEIT
+	else if ( m_Type >= CT_BRUTE && m_Type <= CT_ARBEIT_SEC ) // CT_BRUTE, CT_LONGFALL, CT_ARCTIC, CT_ARBEIT, CT_ARBEIT_SEC
 	{
 		if (GlobalEntity_GetState( "citizens_no_auto_variant" ) != GLOBAL_ON)
 		{
@@ -2645,9 +2646,10 @@ bool CNPC_Citizen::FindDecoyObject(void)
 
 			// One more trace - let's make sure there's nothing immediately in front of the NPC to occlude this firing vector
 			AI_TraceLine( vecBulletOrigin, vecDecoyTarget, MASK_SHOT, this, COLLISION_GROUP_NONE, &blockTr );
-			if (ai_debug_rebel_suppressing_fire.GetBool() && blockTr.fraction < ai_suppression_distance_ratio.GetFloat())
+			if ( blockTr.fraction < ai_suppression_distance_ratio.GetFloat())
 			{
-				DevMsg( "NPC_Citizen::FindDecoyObject: %s covering fire doesn't cover sufficent ratio at: %f\n", GetDebugName(), blockTr.fraction );
+				if(ai_debug_rebel_suppressing_fire.GetBool())
+					DevMsg( "NPC_Citizen::FindDecoyObject: %s covering fire doesn't cover sufficent ratio at: %f\n", GetDebugName(), blockTr.fraction );
 			}
 			else
 			{
