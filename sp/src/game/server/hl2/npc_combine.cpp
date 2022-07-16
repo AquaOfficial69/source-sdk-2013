@@ -1941,7 +1941,12 @@ Class_T	CNPC_Combine::Classify ( void )
 bool CNPC_Combine::IsAltFireCapable( void )
 {
 	// The base class tells us if we're carrying an alt-fire-able weapon.
+#ifdef EZ
+	// HACKHACK: Skip CNPC_PlayerCompanion's grenade capabilities.
+	return (IsElite() || m_bAlternateCapable) && CAI_GrenadeUser<CAI_PlayerAlly>::IsAltFireCapable();
+#else
 	return (IsElite() || m_bAlternateCapable) && BaseClass::IsAltFireCapable();
+#endif
 }
 
 //-----------------------------------------------------------------------------
