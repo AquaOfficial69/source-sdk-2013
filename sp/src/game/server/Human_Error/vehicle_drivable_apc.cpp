@@ -38,6 +38,7 @@
 #include "physics_saverestore.h"
 #include "weapon_physcannon.h"
 #include "eventqueue.h"
+#include "hl2_shareddefs.h"
 #endif
 
 #ifdef EZ2
@@ -614,6 +615,17 @@ void CPropDrivableAPC::Activate()
 		m_pConstraint->SetGameData( (void *)this );
 
 		g_EventQueue.AddEvent( this, "_ResetConstraintToDefault", 2.0f, this, this );
+	}
+
+	// HACKHACK: Halve the vehicle's velocity.
+	if (VPhysicsGetObject())
+	{
+		Vector velocity;
+		AngularImpulse angularVelocity;
+		VPhysicsGetObject()->GetVelocity( &velocity, &angularVelocity );
+		velocity *= 0.5f;
+		angularVelocity *= 0.5f;
+		VPhysicsGetObject()->SetVelocityInstantaneous( &velocity, &angularVelocity );
 	}
 #endif
 }
@@ -1761,6 +1773,17 @@ void CPropDrivableAPC::FireMachineGun( void )
 	DoMuzzleFlash();
 
 	EmitSound( "Weapon_AR2.Single" );
+
+#ifdef EZ
+	if (GetDriver() && GetDriver()->IsPlayer())
+	{
+		CBasePlayer *pPlayer = ((CBasePlayer*)GetDriver());
+		if (pPlayer->GetBonusChallenge() == EZ_CHALLENGE_BULLETS)
+		{
+			pPlayer->SetBonusProgress( pPlayer->GetBonusProgress() + BulletInfo.m_iShots );
+		}
+	}
+#endif
 }
 
 

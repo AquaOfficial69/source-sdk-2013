@@ -1952,7 +1952,6 @@ void CAI_BaseNPC::DoImpactEffect( trace_t &tr, int nDamageType )
 //-----------------------------------------------------------------------------
 // Purpose: Start all glow effects for this NPC.
 //		Based on Manhack eye glows
-//		1upD
 //-----------------------------------------------------------------------------
 void CAI_BaseNPC::StartEye(void)
 {
@@ -1973,8 +1972,8 @@ void CAI_BaseNPC::StartEye(void)
 		//Create our Eye sprite
 		if (sprite == NULL)
 		{
-			sprite = CSprite::SpriteCreate(glowData->spriteName, GetLocalOrigin(), false);
-			sprite->SetAttachment(this, LookupAttachment(glowData->attachment));
+			sprite = CSprite::SpriteCreate(STRING(glowData->spriteName), GetLocalOrigin(), false);
+			sprite->SetAttachment(this, LookupAttachment(STRING(glowData->attachment)));
 
 			sprite->SetTransparency(glowData->renderMode, glowData->red, glowData->green, glowData->blue, glowData->alpha, kRenderFxNoDissipation);
 			sprite->SetColor(glowData->red, glowData->green, glowData->blue);
@@ -2031,6 +2030,69 @@ void CAI_BaseNPC::SetGlowSpritePtr(int i, CSprite * sprite)
 		return;
 
 	m_pEyeGlow = sprite;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Return the glow attributes for a given index
+//-----------------------------------------------------------------------------
+EyeGlow_t * CAI_BaseNPC::GetEyeGlowData( int i )
+{
+	// Only load from model data for 0 index
+	if (i != 0)
+		return NULL;
+
+	EyeGlow_t * eyeGlow = NULL;
+
+	KeyValues *modelKeyValues = new KeyValues( "" );
+	if (modelKeyValues->LoadFromBuffer( modelinfo->GetModelName( GetModel() ), modelinfo->GetModelKeyValueText( GetModel() ) ))
+	{
+		KeyValues *pkvGlowData = modelKeyValues->FindKey( "glow_data" );
+		if (pkvGlowData)
+		{
+			// Get all of the available glow skins
+			CUtlVector<KeyValues*> glowskins;
+			KeyValues *pSkin = pkvGlowData->GetFirstSubKey();
+			while (pSkin)
+			{
+				glowskins.AddToTail( pSkin );
+				pSkin = pSkin->GetNextKey();
+			}
+
+			if (glowskins.Count() > 0)
+			{
+				// Use modulus to get our desired skin
+				pSkin = glowskins[m_nSkin % glowskins.Count()];
+				if (pSkin)
+				{
+					Color color = pSkin->GetColor( "color" );
+
+					// 0 alpha means this skin should not use an eye glow
+					if (color.a() == 0)
+					{
+						modelKeyValues->deleteThis();
+						return NULL;
+					}
+
+					eyeGlow = new EyeGlow_t();
+
+					eyeGlow->red = color.r();
+					eyeGlow->green = color.g();
+					eyeGlow->blue = color.b();
+					eyeGlow->alpha = color.a();
+
+					eyeGlow->spriteName = AllocPooledString(pSkin->GetString( "spriteName", "sprites/light_glow02.vmt" ));
+					eyeGlow->attachment = AllocPooledString(pSkin->GetString( "attachment", "eyes" ));
+					eyeGlow->renderMode = (RenderMode_t)pSkin->GetInt( "renderMode", kRenderGlow );
+					eyeGlow->scale = pSkin->GetFloat( "scale", 0.3f );
+					eyeGlow->proxyScale = pSkin->GetFloat( "proxyScale", 3.0f );
+				}
+			}
+		}
+
+		modelKeyValues->deleteThis();
+	}
+
+	return eyeGlow;
 }
 #endif
 
@@ -10025,6 +10087,21 @@ void CAI_BaseNPC::HandleAnimEvent( animevent_t *pEvent )
 			}
 			else if ( pEvent->event == AE_NPC_RAGDOLL )
 			{
+#ifdef EZ
+				// Drop a serverside ragdoll instead if needed
+				if ( m_bForceServerRagdoll == true )
+				{
+					if ( CanBecomeServerRagdoll() == false )
+						return;
+
+					CBaseEntity *pRagdoll = CreateServerRagdoll( this, m_nForceBone, CTakeDamageInfo(), COLLISION_GROUP_INTERACTIVE_DEBRIS, true );
+					FixupBurningServerRagdoll( pRagdoll );
+					m_hDeathRagdoll = pRagdoll;
+					RemoveDeferred();
+					return;
+				}
+#endif
+
 				// Convert to ragdoll immediately
 				BecomeRagdollOnClient( vec3_origin );
 				return;
@@ -12314,8 +12391,8 @@ BEGIN_DATADESC( CAI_BaseNPC )
 #ifdef EZ
 		DEFINE_KEYFIELD( m_tEzVariant,			FIELD_INTEGER, "ezvariant" ),
 		DEFINE_KEYFIELD( m_bNoGlow,				FIELD_BOOLEAN, "noglow" ),
+		DEFINE_KEYFIELD( m_bInvestigateSounds,	FIELD_BOOLEAN, "investigatesounds" ),
 #endif
-
 
 #ifdef MAPBASE
 	DEFINE_KEYFIELD( m_FriendlyFireOverride,	FIELD_INTEGER, "FriendlyFireOverride" ),
@@ -13650,6 +13727,54 @@ bool CAI_BaseNPC::HandleInteraction(int interactionType, void *data, CBaseCombat
 		return true;
 	}
 #endif // HL2_DLL
+
+
+#ifdef EZ2
+	if ( interactionType == g_interactionXenGrenadeCreate && sourceEnt)
+	{
+		// Decrease relationship priority for thrower + thrower's allies, makes them prioritize the player's enemies
+		Disposition_t rel = IRelationType( sourceEnt );
+		if (rel == D_HT || rel == D_FR)
+		{
+			AddEntityRelationship( sourceEnt, rel, IRelationPriority( sourceEnt ) - 1 );
+			sourceEnt->AddEntityRelationship( this, sourceEnt->IRelationType( this ), sourceEnt->IRelationPriority( this ) - 1 );
+
+			// If thrown by a NPC, use the NPC's squad
+			// If thrown by a player, use the player squad
+			CAI_Squad *pSquad = NULL;
+			if (sourceEnt->IsNPC())
+				pSquad = sourceEnt->MyNPCPointer()->GetSquad();
+			else if (sourceEnt->IsPlayer())
+				pSquad = static_cast<CHL2_Player*>(sourceEnt)->GetPlayerSquad();
+
+			if (pSquad)
+			{
+				// Iterate through the thrower's squad and apply the same relationship code
+				AISquadIter_t iter;
+				for (CAI_BaseNPC *pSquadmate = pSquad->GetFirstMember( &iter ); pSquadmate; pSquadmate = pSquad->GetNextMember( &iter ))
+				{
+					this->AddEntityRelationship( pSquadmate, this->IRelationType( pSquadmate ), this->IRelationPriority( pSquadmate ) - 1 );
+					pSquadmate->AddEntityRelationship( this, pSquadmate->IRelationType( this ), pSquadmate->IRelationPriority( this ) - 1 );
+				}
+			}
+		}
+
+		// Create a temporary enemy finder so the XenPC can locate enemies immediately
+		CBaseEntity *pFinder = CreateNoSpawn( "npc_enemyfinder", GetAbsOrigin(), GetAbsAngles(), this );
+		pFinder->KeyValue( "FieldOfView", "-1.0" );
+		pFinder->KeyValue( "spawnflags", "65536" );
+		pFinder->KeyValue( "StartOn", "1" );
+		pFinder->KeyValue( "MinSearchDist", "0" );
+		pFinder->KeyValue( "MaxSearchDist", "2048" );
+		pFinder->KeyValue( "squadname", this->GetSquad() ? this->GetSquad()->GetName() : UTIL_VarArgs( "xe%s", GetClassname() ) );
+
+		DispatchSpawn( pFinder );
+
+		pFinder->SetContextThink( &CBaseEntity::SUB_Remove, gpGlobals->curtime + 1.0f, "SUB_Remove" );
+
+		return true;
+	}
+#endif
 
 	return BaseClass::HandleInteraction( interactionType, data, sourceEnt );
 }

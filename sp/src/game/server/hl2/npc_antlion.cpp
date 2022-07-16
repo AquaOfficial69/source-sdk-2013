@@ -199,6 +199,11 @@ CNPC_Antlion::CNPC_Antlion( void )
 	m_bForcedStuckJump = false;
 	m_nBodyBone = -1;
 	m_bSuppressUnburrowEffects = false;
+
+#ifdef EZ
+	// Antlions should investigate sounds in EZ2
+	m_bInvestigateSounds = true;
+#endif
 }
 
 LINK_ENTITY_TO_CLASS( npc_antlion, CNPC_Antlion );
@@ -4665,6 +4670,10 @@ bool CNPC_Antlion::CanRunAScriptedNPCInteraction( bool bForced /*= false*/ )
 //-----------------------------------------------------------------------------
 EyeGlow_t * CNPC_Antlion::GetEyeGlowData(int i)
 {
+	EyeGlow_t * eyeGlow = BaseClass::GetEyeGlowData(i);
+	if (eyeGlow != NULL)
+		return eyeGlow;
+
 	// Only the first glow is valid
 	if (i != 0)
 		return NULL;
@@ -4673,8 +4682,11 @@ EyeGlow_t * CNPC_Antlion::GetEyeGlowData(int i)
 	if (IsWorker())
 		return NULL;
 
+	if (LookupAttachment( "back" ) == -1)
+		return NULL;
+
 	// Color to use in sprite
-	EyeGlow_t * eyeGlow = new EyeGlow_t();
+	eyeGlow = new EyeGlow_t();
 	switch ( m_tEzVariant )
 	{
 		case EZ_VARIANT_XEN:
@@ -4696,9 +4708,9 @@ EyeGlow_t * CNPC_Antlion::GetEyeGlowData(int i)
 			eyeGlow->alpha = 200;
 			break;
 	}
-	eyeGlow->spriteName = "sprites/light_glow02.vmt";
+	eyeGlow->spriteName = AllocPooledString("sprites/light_glow02.vmt");
 
-	eyeGlow->attachment = "back";
+	eyeGlow->attachment = AllocPooledString("back");
 	eyeGlow->scale = 1.0f;
 	eyeGlow->proxyScale = 10.0f;
 	eyeGlow->renderMode = kRenderGlow;

@@ -494,8 +494,8 @@ struct EyeGlow_t
 		renderMode = kRenderTransAdd;
 		brightness = 0;
 		proxyScale = 0.0f;
-		spriteName = NULL;
-		attachment = NULL;
+		spriteName = NULL_STRING;
+		attachment = NULL_STRING;
 	}
 
 	int red;
@@ -506,8 +506,8 @@ struct EyeGlow_t
 	float brightness;
 	float scale;
 	float proxyScale;
-	const char *spriteName;
-	const char *attachment;
+	string_t spriteName;
+	string_t attachment;
 };
 
 //=============================================================================
@@ -1142,11 +1142,13 @@ public:
 	virtual float		HearingSensitivity( void )		{ return 1.0;	}
 	virtual bool		ShouldIgnoreSound( CSound * )	{ return false; }
 	bool				SoundIsVisible( CSound *pSound );
-	virtual bool		ShouldInvestigateSounds(void)	{ return false; }; // If true, this NPC will investigate sounds instead of facing them
+	virtual bool		ShouldInvestigateSounds(void)	{ return m_bInvestigateSounds; }; // If true, this NPC will investigate sounds instead of facing them
 
 protected:
 	virtual void		ClearSenseConditions( void );
 	
+	bool				m_bInvestigateSounds;
+
 private:
 	void				LockBestSound();
 	void				UnlockBestSound();
@@ -2017,6 +2019,11 @@ public:
 	virtual bool		CurrentWeaponLOSCondition(const Vector &targetPos, bool bSetConditions) { return WeaponLOSCondition( GetAbsOrigin(), targetPos, bSetConditions ); }
 	virtual bool		IsWaitingToRappel( void ) { return false; }
 	virtual void		BeginRappel() {}
+#ifdef EZ2
+	// Used by the Arbeit helicopter
+	virtual bool		HasRappelBehavior() { return false; }
+	virtual void		StartWaitingForRappel() {}
+#endif
 
 	// override to change the chase location of an enemy
 	// This is where your origin should go when you are chasing pEnemy when his origin is at chasePosition
@@ -2515,7 +2522,7 @@ protected:
 
 	virtual CSprite		* GetGlowSpritePtr(int i);
 	virtual void		  SetGlowSpritePtr(int i, CSprite * sprite);
-	virtual EyeGlow_t	* GetEyeGlowData(int i) { return NULL; };
+	virtual EyeGlow_t	* GetEyeGlowData(int i);
 	virtual int			GetNumGlows() { return 1; };
 #endif
 };

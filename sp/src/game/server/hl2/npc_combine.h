@@ -102,6 +102,7 @@ public:
 	void Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &info );
 
 	virtual bool	PassesDamageFilter( const CTakeDamageInfo &info );
+	virtual int 	OnTakeDamage_Alive( const CTakeDamageInfo &info );
 #endif
 
 	void SetActivity( Activity NewActivity );
@@ -137,6 +138,8 @@ public:
 	void InputSetManhacks( inputdata_t &inputdata );
 	void InputEnablePlayerUse( inputdata_t &inputdata );
 	void InputDisablePlayerUse( inputdata_t &inputdata );
+	void InputEnableOrderSurrender( inputdata_t &inputdata );
+	void InputDisableOrderSurrender( inputdata_t &inputdata );
 	COutputEHANDLE	m_OutManhack;
 
 	//-----------------------------------------------------
@@ -162,6 +165,8 @@ public:
 	virtual void	AddToPlayerSquad();
 	virtual void	RemoveFromPlayerSquad();
 	virtual void	FixupPlayerSquad();
+	virtual void	UpdateSquadGlow();
+	virtual bool    ShouldSquadGlow();
 	virtual bool	ShouldRegenerateHealth(void);
 	virtual void	UpdateFollowCommandPoint();
 	virtual bool	IsFollowingCommandPoint();
@@ -170,6 +175,9 @@ public:
 	virtual bool	ShouldAlwaysThink();
 	virtual bool	ShouldBehaviorSelectSchedule( CAI_BehaviorBase *pBehavior );
 	virtual bool	ShouldLookForBetterWeapon();
+	virtual bool	ShouldLookForHealthItem();
+	CBaseEntity		*FindHealthItem( const Vector &vecPosition, const Vector &range );
+	void			PickupItem( CBaseEntity *pItem );
 	virtual void	Weapon_Drop( CBaseCombatWeapon *pWeapon, const Vector *pvecTarget = NULL, const Vector *pVelocity = NULL );
 	virtual void	PickupWeapon( CBaseCombatWeapon *pWeapon );
 
@@ -177,6 +185,8 @@ public:
 	virtual int 	SelectScheduleRetrieveItem();
 
 	virtual bool	IsMajorCharacter() { return IsCommandable(); }
+
+	virtual bool	CanOrderSurrender() { return m_bCanOrderSurrender; }
 
 	// Blixibon - Elites in ball attacks should aim while moving, even if they can't shoot
 	bool			HasAttackSlot() { return BaseClass::HasAttackSlot() || HasStrategySlot( SQUAD_SLOT_SPECIAL_ATTACK ); }
@@ -340,6 +350,8 @@ protected:
 
 	// 1upD - If true, player +USE has no effect
 	bool m_bDisablePlayerUse;
+
+	bool m_bCanOrderSurrender;
 #endif
 
 #ifdef EZ2
@@ -388,6 +400,9 @@ private:
 #ifdef EZ
 		SCHED_COMBINE_DEPLOY_MANHACK,
 #endif
+#ifdef EZ2
+		SCHED_COMBINE_ORDER_SURRENDER,
+#endif
 		NEXT_SCHEDULE,
 	};
 
@@ -420,6 +435,9 @@ private:
 		COND_COMBINE_DROP_GRENADE,
 		COND_COMBINE_ON_FIRE,
 		COND_COMBINE_ATTACK_SLOT_AVAILABLE,
+#ifdef EZ2
+		COND_COMBINE_CAN_ORDER_SURRENDER,
+#endif
 		NEXT_CONDITION
 	};
 
@@ -468,9 +486,10 @@ private:
 	// Rappel
 	virtual bool IsWaitingToRappel( void ) { return m_RappelBehavior.IsWaitingToRappel(); }
 	void BeginRappel() { m_RappelBehavior.BeginRappel(); }
-
-#ifdef EZ
-	EyeGlow_t	* GetEyeGlowData(int i);
+#ifdef EZ2
+	// Used by the Arbeit helicopter
+	virtual bool HasRappelBehavior() { return true; }
+	virtual void StartWaitingForRappel() { m_RappelBehavior.StartWaitingForRappel(); }
 #endif
 
 private:
@@ -491,6 +510,11 @@ private:
 
 	float			m_flTimePlayerStare;
 	bool			m_bTemporarilyNeedWeapon; // Soldiers who drop their weapons but aren't supposed to pick them up autonomously are given this so that they arm themselves again
+
+	float			m_flNextHealthSearchTime;
+protected:
+	bool			m_bLookForItems;
+private:
 #endif
 
 	// Time Variables

@@ -248,6 +248,9 @@ BEGIN_DATADESC( CNPC_MetroPolice )
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "AddWarnings", InputAddWarnings ),
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetWarnings", InputSetWarnings ),
 #endif
+#ifdef EZ
+	DEFINE_INPUTFUNC( FIELD_VOID, "TriggerIdleQuestion", InputTriggerIdleQuestion ),
+#endif
 	
 	DEFINE_USEFUNC( PrecriminalUse ),
 
@@ -555,14 +558,31 @@ void CNPC_MetroPolice::PrescheduleThink( void )
 
 	// Look at near players, always
 	m_bPlayerIsNear = false;
+#ifdef EZ
+	if ( PlayerIsCriminal() == false || (UTIL_PlayerByIndex( 1 ) && IRelationType( UTIL_PlayerByIndex( 1 ) ) != D_HT && ((GetState() == NPC_STATE_ALERT) || (GetState() == NPC_STATE_IDLE))) )
+#else
 	if ( PlayerIsCriminal() == false )
+#endif
 	{
 		CBasePlayer *pPlayer = UTIL_PlayerByIndex( 1 );
 		
 		if ( pPlayer && ( pPlayer->WorldSpaceCenter() - WorldSpaceCenter() ).LengthSqr() < (128*128) )
 		{
 			m_bPlayerIsNear = true;
+#ifdef EZ
+			// Don't look at the player if we're speaking/just finished speaking, or if we're safe from them
+			if ( gpGlobals->curtime - GetExpresser()->GetTimeSpeechComplete() >= 7.5f )
+			{
+				trace_t tr;
+				CTraceFilterSkipTwoEntities filter( this, pPlayer, COLLISION_GROUP_NONE );
+				UTIL_TraceLine( EyePosition(), pPlayer->EyePosition(), MASK_NPCSOLID_BRUSHONLY, &filter, &tr );
+
+				if ( tr.fraction == 1.0f )
+					AddLookTarget( pPlayer, 0.75f, 5.0f );
+			}
+#else
 			AddLookTarget( pPlayer, 0.75f, 5.0f );
+#endif
 			
 			if ( ( m_PolicingBehavior.IsEnabled() == false ) && ( m_nNumWarnings >= METROPOLICE_MAX_WARNINGS ) )
 			{
@@ -1186,9 +1206,35 @@ bool CNPC_MetroPolice::SpeakIfAllowed( const char *concept, AI_CriteriaSet& modi
 	if ( !GetExpresser()->CanSpeakConcept( concept ) )
 		return false;
 
+#ifdef EZ
+	if ((GetState() == NPC_STATE_IDLE || GetState() == NPC_STATE_ALERT) && sentencepriority != SENTENCE_PRIORITY_INVALID)
+	{
+		if (sentencepriority == SENTENCE_PRIORITY_NORMAL)
+		{
+			// If someone else is talking, don't speak
+			if ( !GetExpresser()->SemaphoreIsAvailable( this ) )
+				return false;
+
+			if ( !GetExpresser()->CanSpeak() )
+				return false;
+		}
+		else
+		{
+			// If we're speaking, don't speak
+			if (IsSpeaking())
+				return false;
+		}
+	}
+#endif
+
 	if ( Speak( concept, modifiers ) )
 	{
+#ifdef EZ
+		// Negate the 1.5-2.0 second delay into a 0.5-1.0 second delay to reduce the risk of +USE dialogue being missed due to being overshadowed
+		JustMadeSound( sentencepriority, GetExpresser()->GetRealTimeSpeechComplete() - gpGlobals->curtime - 1.0f );
+#else
 		JustMadeSound( sentencepriority, 2.0f /*GetTimeSpeechComplete()*/ );
+#endif
 		return true;
 	}
 
@@ -2895,6 +2941,28 @@ void CNPC_MetroPolice::InputAddWarnings( inputdata_t &inputdata )
 void CNPC_MetroPolice::InputSetWarnings( inputdata_t &inputdata )
 {
 	m_nNumWarnings = inputdata.value.Int();
+}
+#endif
+
+#ifdef EZ
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : &inputdata - 
+//-----------------------------------------------------------------------------
+void CNPC_MetroPolice::InputTriggerIdleQuestion( inputdata_t &inputdata )
+{
+	if (IsSpeaking() || !IsInSquad() || ( m_NPCState != NPC_STATE_IDLE && m_NPCState != NPC_STATE_ALERT ) || HasSpawnFlags(SF_NPC_GAG))
+		return;
+
+	if ( m_nIdleChatterType == METROPOLICE_CHATTER_ASK_QUESTION )
+	{
+		int nQuestionType = random->RandomInt( 0, METROPOLICE_CHATTER_RESPONSE_TYPE_COUNT-1 );
+		if ( SpeakIfAllowed( TLK_COP_QUESTION, UTIL_VarArgs("combinequestion:%d", nQuestionType) ) )
+		{
+			GetSquad()->BroadcastInteraction( g_interactionMetrocopIdleChatter, (void*)(METROPOLICE_CHATTER_RESPONSE + nQuestionType), this );
+			m_nIdleChatterType = METROPOLICE_CHATTER_WAIT_FOR_RESPONSE;
+		}
+	}
 }
 #endif
 
@@ -5824,6 +5892,9 @@ void CNPC_MetroPolice::BuildScheduleTestBits( void )
 
 	//FIXME: Always interrupt for now
 	if ( !IsInAScript() && 
+#ifdef EZ
+		 (!m_ActBusyBehavior.IsActive() || PlayerIsCriminal() == false) &&
+#endif
 		 !IsCurSchedule( SCHED_METROPOLICE_SHOVE ) &&
 		 !IsCurSchedule( SCHED_MELEE_ATTACK1 ) &&
 		 !IsCurSchedule( SCHED_RELOAD ) && 
@@ -6093,6 +6164,11 @@ void CNPC_MetroPolice::PrecriminalUse( CBaseEntity *pActivator, CBaseEntity *pCa
 	// Don't respond if I'm busy hating the player
 	if ( IRelationType( pActivator ) == D_HT || ((GetState() != NPC_STATE_ALERT) && (GetState() != NPC_STATE_IDLE)) )
 		return;
+
+#ifdef EZ
+	SpeakIfAllowed( "TLK_USE", SENTENCE_PRIORITY_HIGH, SENTENCE_CRITERIA_ALWAYS );
+#endif
+
 	if ( PlayerIsCriminal() )
 		return;
 
@@ -6105,42 +6181,6 @@ void CNPC_MetroPolice::PrecriminalUse( CBaseEntity *pActivator, CBaseEntity *pCa
 		AdministerJustice();
 	}
 }
-
-#ifdef EZ
-//-----------------------------------------------------------------------------
-// Purpose: Return the glow attributes for a given index
-//-----------------------------------------------------------------------------
-EyeGlow_t * CNPC_MetroPolice::GetEyeGlowData(int i)
-{
-	if (i != 0)
-		return NULL;
-
-	EyeGlow_t * eyeGlow = new EyeGlow_t();
-
-	eyeGlow->spriteName = "sprites/light_glow02.vmt";
-	eyeGlow->attachment = "eyes";
-
-	eyeGlow->alpha = 100;
-	eyeGlow->red = 0;
-	eyeGlow->green = 255;
-	eyeGlow->blue = 255;
-	eyeGlow->scale = 0.3f;
-	eyeGlow->proxyScale = 3.0f;
-	eyeGlow->renderMode = kRenderGlow;
-	return eyeGlow;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: If the metrocop has NVG on, it has 1 glow sprite
-//		Otherwise 0
-//-----------------------------------------------------------------------------
-int CNPC_MetroPolice::GetNumGlows()
-{
-	if (m_nSkin == 1)
-		return 1;
-	return 0;
-}
-#endif
 
 //-----------------------------------------------------------------------------
 //

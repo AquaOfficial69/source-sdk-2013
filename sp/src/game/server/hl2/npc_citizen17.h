@@ -88,6 +88,9 @@ public:
 		, m_iWillpowerModifier( 0 )
 #endif
 	{
+#ifdef EZ2
+		m_bInvestigateSounds = true; // Rebels should investigate sounds
+#endif
 	}
 
 	//---------------------------------
@@ -166,10 +169,6 @@ public:
 	int				DrawDebugTextOverlays( void );
 
 	virtual const char *SelectRandomExpressionForState( NPC_STATE state );
-
-#ifdef EZ2
-	bool	ShouldInvestigateSounds(void) { return true; } // 1upD - Rebels should investigate sounds
-#endif // EZ2
 
 #ifdef EZ
 	// Blixibon - Lets citizens ignite from gas cans, etc.
@@ -356,6 +355,10 @@ public:
 	void			InputSetSurrenderFlags( inputdata_t &inputdata );
 	void			InputAddSurrenderFlags( inputdata_t &inputdata );
 	void			InputRemoveSurrenderFlags( inputdata_t &inputdata );
+	void			InputSetWillpowerModifier( inputdata_t &inputdata );
+	void			InputSetWillpowerDisabled( inputdata_t &inputdata );
+	void			InputSetSuppressiveFireDisabled( inputdata_t &inputdata );
+	void			InputForcePanic( inputdata_t &inputdata );
 #endif
 
 	//---------------------------------
@@ -499,6 +502,11 @@ private:
 	void BeginRappel() { m_RappelBehavior.BeginRappel(); }
 #else // Moved to CNPC_PlayerCompanion
 	CAI_FuncTankBehavior	m_FuncTankBehavior;
+#endif
+#ifdef EZ2
+	// Used by the Arbeit helicopter
+	virtual bool HasRappelBehavior() { return true; }
+	virtual void StartWaitingForRappel() { m_RappelBehavior.StartWaitingForRappel(); }
 #endif
 
 #ifdef EZ2

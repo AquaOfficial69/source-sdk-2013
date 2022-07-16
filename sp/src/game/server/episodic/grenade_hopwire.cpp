@@ -25,6 +25,7 @@
 #include "saverestore.h"
 #include "saverestore_utlmap.h"
 #include "items.h"
+#include "hl2_shareddefs.h"
 
 #include "ai_hint.h"
 #include "ai_network.h"
@@ -875,6 +876,17 @@ void CGravityVortexController::ConsumeEntity( CBaseEntity *pEnt )
 	}
 
 	pEnt->RemoveDeferred();
+
+	if (GetThrower() && GetThrower()->IsPlayer())
+	{
+		CBasePlayer *pPlayer = ((CBasePlayer *)GetThrower());
+		if (pPlayer->GetBonusChallenge() == EZ_CHALLENGE_MASS)
+		{
+			// Add this mass to the bonus progress
+			// TODO: Prevent Xen spawns from contributing to this value?
+			pPlayer->SetBonusProgress( pPlayer->GetBonusProgress() - flMass );
+		}
+	}
 #else
 	UTIL_Remove( pEnt );
 #endif
@@ -932,6 +944,13 @@ void CGravityVortexController::PullPlayersInRange( void )
 
 	float mass = pPlayer->VPhysicsGetObject()->GetMass();
 	float playerForce = m_flStrength * 0.05f;
+
+#ifdef EZ2
+	if (m_flPullFadeTime > 0.0f)
+	{
+		playerForce *= ((gpGlobals->curtime - m_flStartTime) / m_flPullFadeTime);
+	}
+#endif
 
 	// Find the pull force
 	// NOTE: We might want to make this non-linear to give more of a "grace distance"
@@ -1502,50 +1521,6 @@ bool CGravityVortexController::TrySpawnRecipeNPC( CBaseEntity *pEntity, bool bCa
 	if (bCallSpawnFuncs)
 		pEntity->Activate();
 
-	CBaseCombatCharacter *pThrower = GetThrower();
-	if ( baseNPC && pThrower )
-	{
-		// Decrease relationship priority for thrower + thrower's allies, makes them prioritize the player's enemies
-		Disposition_t rel = baseNPC->IRelationType( pThrower );
-		if (rel == D_HT || rel == D_FR)
-		{
-			baseNPC->AddEntityRelationship( pThrower, rel, baseNPC->IRelationPriority(pThrower) - 1 );
-			pThrower->AddEntityRelationship( baseNPC, pThrower->IRelationType(baseNPC), pThrower->IRelationPriority(baseNPC) - 1 );
-
-			// If thrown by a NPC, use the NPC's squad
-			// If thrown by a player, use the player squad
-			CAI_Squad *pSquad = NULL;
-			if (pThrower->IsNPC())
-				pSquad = pThrower->MyNPCPointer()->GetSquad();
-			else if (pThrower->IsPlayer())
-				pSquad = static_cast<CHL2_Player*>( pThrower )->GetPlayerSquad();
-
-			if (pSquad)
-			{
-				// Iterate through the thrower's squad and apply the same relationship code
-				AISquadIter_t iter;
-				for (CAI_BaseNPC *pSquadmate = pSquad->GetFirstMember( &iter ); pSquadmate; pSquadmate = pSquad->GetNextMember( &iter ))
-				{
-					baseNPC->AddEntityRelationship( pSquadmate, baseNPC->IRelationType(pSquadmate), baseNPC->IRelationPriority(pSquadmate) - 1 );
-					pSquadmate->AddEntityRelationship( baseNPC, pSquadmate->IRelationType(baseNPC), pSquadmate->IRelationPriority(baseNPC) - 1 );	
-				}
-			}
-		}
-
-		// Create a temporary enemy finder so the XenPC can locate enemies immediately
-		CBaseEntity *pFinder = CreateNoSpawn( "npc_enemyfinder", GetAbsOrigin(), GetAbsAngles(), baseNPC );
-		pFinder->KeyValue( "FieldOfView", "-1.0" );
-		pFinder->KeyValue( "spawnflags", "65536" );
-		pFinder->KeyValue( "StartOn", "1" );
-		pFinder->KeyValue( "MinSearchDist", "0" );
-		pFinder->KeyValue( "MaxSearchDist", "2048" );
-		pFinder->KeyValue( "squadname", baseNPC->GetSquad() ? baseNPC->GetSquad()->GetName() : UTIL_VarArgs( "xe%s", pEntity->GetClassname() ) );
-
-		DispatchSpawn( pFinder );
-
-		pFinder->SetContextThink( &CBaseEntity::SUB_Remove, gpGlobals->curtime + 1.0f, "SUB_Remove" );
-	}
-
 	// Notify the NPC of the player's position
 	// Sometimes Xen grenade spawns just kind of hang out in one spot. They should always have at least one potential enemy to aggro
 	// XenPCs that are 'predators' don't need this because they already wander
@@ -1823,6 +1798,8 @@ void CGravityVortexController::SchlorpThink( void )
 //-----------------------------------------------------------------------------
 void CGravityVortexController::PullThink( void )
 {
+	float flStrength = m_flStrength;
+
 #ifdef EZ2
 	// Pull any players close enough to us
 	PullPlayersInRange();
@@ -1856,6 +1833,11 @@ void CGravityVortexController::PullThink( void )
 	{
 		// Create a PVS for this entity
 		engine->GetPVSForCluster( engine->GetClusterForOrigin( GetAbsOrigin() ), sizeof(m_PVS), m_PVS );
+	}
+
+	if (m_flPullFadeTime > 0.0f)
+	{
+		flStrength *= ((gpGlobals->curtime - m_flStartTime) / m_flPullFadeTime);
 	}
 #else
 	// Pull any players close enough to us
@@ -1917,10 +1899,10 @@ void CGravityVortexController::PullThink( void )
 			{
 				// Find the pull force
 				// Minimum pull force is 10% of strength here
-				vecForce *= MAX( 1.0f - ( abs( dist2D ) / m_flRadius), 0.1f ) * m_flStrength;
+				vecForce *= MAX( 1.0f - ( abs( dist2D ) / m_flRadius), 0.1f ) * flStrength;
 
 				// Physics damage info
-				CTakeDamageInfo info( this, this, vecForce, GetAbsOrigin(), m_flStrength, DMG_BLAST );
+				CTakeDamageInfo info( this, this, vecForce, GetAbsOrigin(), flStrength, DMG_BLAST );
 
 				// Dispatch interaction. Skip pulling if it returns true
 				if ( pEnts[i]->DispatchInteraction( g_interactionXenGrenadePull, &info, GetThrower() ) )
@@ -2019,11 +2001,11 @@ void CGravityVortexController::PullThink( void )
 
 		// Find the pull force
 		// Minimum pull force is 10% of strength here
-		vecForce *= MAX( 1.0f - ( abs( dist2D ) / m_flRadius ), 0.1f ) * m_flStrength * mass;
+		vecForce *= MAX( 1.0f - ( abs( dist2D ) / m_flRadius ), 0.1f ) * flStrength * mass;
 		
 
 #ifdef EZ2
-		CTakeDamageInfo info( this, this, vecForce, GetAbsOrigin(), m_flStrength, DMG_BLAST );
+		CTakeDamageInfo info( this, this, vecForce, GetAbsOrigin(), flStrength, DMG_BLAST );
 		if ( !pEnts[i]->DispatchInteraction( g_interactionXenGrenadePull, &info, GetThrower() ) && pPhysObject != NULL )
 		{
 			// Pull the object in if there was no special handling
@@ -2033,7 +2015,7 @@ void CGravityVortexController::PullThink( void )
 		if ( pEnts[i]->VPhysicsGetObject() )
 		{
 			// Pull the object in
-			pEnts[i]->VPhysicsTakeDamage( CTakeDamageInfo( this, this, vecForce, GetAbsOrigin(), m_flStrength, DMG_BLAST ) );
+			pEnts[i]->VPhysicsTakeDamage( CTakeDamageInfo( this, this, vecForce, GetAbsOrigin(), flStrength, DMG_BLAST ) );
 		}
 #endif
 	}
@@ -2120,6 +2102,8 @@ void CGravityVortexController::StartPull( const Vector &origin, float radius, fl
 
 	SetDefLessFunc( m_SpawnList );
 	m_SpawnList.EnsureCapacity( 16 );
+
+	m_flStartTime = gpGlobals->curtime;
 #endif
 
 	SetThink( &CGravityVortexController::PullThink );
@@ -2170,6 +2154,9 @@ BEGIN_DATADESC( CGravityVortexController )
 	DEFINE_KEYFIELD( m_flNodeRadius, FIELD_FLOAT, "node_radius" ),
 
 	DEFINE_KEYFIELD( m_flConsumeRadius, FIELD_FLOAT, "consume_radius" ),
+
+	DEFINE_FIELD( m_flStartTime, FIELD_TIME ),
+	DEFINE_KEYFIELD( m_flPullFadeTime, FIELD_FLOAT, "pull_fade_in" ),
 
 	DEFINE_FIELD( m_hReleaseEntity, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hThrower, FIELD_EHANDLE ),
