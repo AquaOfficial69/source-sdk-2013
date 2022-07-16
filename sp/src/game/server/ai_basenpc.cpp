@@ -7057,7 +7057,11 @@ Activity CAI_BaseNPC::TranslateActivity( Activity idealActivity, Activity *pIdea
 		return baseTranslation;
 
 	if ( idealWeaponActivity != baseTranslation && HaveSequenceForActivity( idealWeaponActivity ) )
+#ifdef MAPBASE
+		return idealWeaponActivity;
+#else
 		return idealActivity;
+#endif
 
 	if ( idealActivity != idealWeaponActivity && HaveSequenceForActivity( idealActivity ) )
 		return idealActivity;
