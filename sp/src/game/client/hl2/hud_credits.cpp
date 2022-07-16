@@ -553,31 +553,6 @@ void CHudCredits::DrawOutroCreditFont( const char *pCreditName, float flYPos, vg
 	surface()->DrawUnicodeString( unicode );
 }
 
-#ifdef MAPBASE
-void CHudCredits::DrawOutroCreditFont( const char *pCreditName, float flYPos, vgui::HFont hTFont, const Color &cColor, int iScreenWidth, int iDivisor )
-{
-	surface()->DrawSetTextFont( hTFont );
-	surface()->DrawSetTextColor( cColor[0], cColor[1], cColor[2], cColor[3]  );
-	
-	wchar_t unicode[256];
-	
-	if ( pCreditName[0] == '#' )
-	{
-		g_pVGuiLocalize->ConstructString( unicode, sizeof(unicode), g_pVGuiLocalize->Find(pCreditName), 0 );
-	}
-	else
-	{
-		g_pVGuiLocalize->ConvertANSIToUnicode( pCreditName, unicode, sizeof( unicode ) );
-	}
-
-	int iStringWidth = GetStringPixelWidth( unicode, hTFont );
-
-	// ((iScreenWidth*iMultiplier) / iDivisor)
-	// When needed, just multiply iScreenWidth before sending to the function
-	surface()->DrawSetTextPos( (iScreenWidth / iDivisor) - (iStringWidth / 2), flYPos );
-	surface()->DrawUnicodeString( unicode );
-}
-
 void CHudCredits::DrawOutroCreditTexture( int iImageID, float flYPos, float flImageScale, const Color &cColor, int iScreenWidth, int iDivisor )
 {
 	int iImageWide, iImageTall;
@@ -1125,21 +1100,6 @@ void CHudCredits::PrepareIntroCredits( void )
 
 	SetActive( true );
 }
-
-#ifdef MAPBASE
-int CHudCredits::GetOrAllocateImageID( const char *szFileName )
-{
-	int iIndex = m_ImageDict.Find( szFileName );
-	if (iIndex == m_ImageDict.InvalidIndex())
-	{
-		iIndex = surface()->CreateNewTextureID();
-		m_ImageDict.Insert( szFileName, iIndex );
-		surface()->DrawSetTextureFile( iIndex, szFileName, true, false );
-		return iIndex;
-	}
-	return m_ImageDict[iIndex];
-}
-#endif
 
 #ifdef MAPBASE
 void CHudCredits::PrecacheCredits()

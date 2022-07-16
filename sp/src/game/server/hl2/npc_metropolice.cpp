@@ -1231,7 +1231,11 @@ bool CNPC_MetroPolice::SpeakIfAllowed( const char *concept, AI_CriteriaSet& modi
 	{
 #ifdef EZ
 		// Negate the 1.5-2.0 second delay into a 0.5-1.0 second delay to reduce the risk of +USE dialogue being missed due to being overshadowed
+#ifdef NEW_RESPONSE_SYSTEM
+		JustMadeSound( sentencepriority, GetExpresser()->GetTimeSpeechCompleteWithoutDelay() - gpGlobals->curtime - 1.0f );
+#else
 		JustMadeSound( sentencepriority, GetExpresser()->GetRealTimeSpeechComplete() - gpGlobals->curtime - 1.0f );
+#endif
 #else
 		JustMadeSound( sentencepriority, 2.0f /*GetTimeSpeechComplete()*/ );
 #endif
