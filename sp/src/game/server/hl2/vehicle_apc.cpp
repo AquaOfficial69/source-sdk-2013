@@ -50,6 +50,8 @@
 #define DEATH_VOLLEY_MIN_FIRE_TIME		0.333
 #define DEATH_VOLLEY_MAX_FIRE_TIME		0.166
 
+bool isRebelAPC;
+
 extern short g_sModelIndexFireball; // Echh...
 
 
@@ -162,6 +164,12 @@ void CPropAPC::Spawn( void )
 	if( g_pGameRules->GetAutoAimMode() == AUTOAIM_ON_CONSOLE )
 	{
 		AddFlag( FL_AIMTARGET );
+	}
+
+
+	if (m_nSkin >= 1)
+	{
+		isRebelAPC = true;
 	}
 }
 
@@ -357,6 +365,10 @@ void CPropAPC::ExplodeAndThrowChunk( const Vector &vecExplosionPos )
 	// Drop a flaming, smoking chunk.
 	CGib *pChunk = CREATE_ENTITY( CGib, "gib" );
 	pChunk->Spawn( "models/gibs/hgibs.mdl" );
+	if (isRebelAPC)
+	{
+		pChunk->SetSkin(1);
+	}
 	pChunk->SetBloodColor( DONT_BLEED );
 
 	QAngle vecSpawnAngles;
@@ -366,6 +378,10 @@ void CPropAPC::ExplodeAndThrowChunk( const Vector &vecExplosionPos )
 
 	int nGib = random->RandomInt( 0, APC_MAX_CHUNKS - 1 );
 	pChunk->Spawn( s_pChunkModelName[nGib] );
+	if (m_nSkin == 1)
+	{
+		pChunk->SetSkin(1);
+	}
 	pChunk->SetOwnerEntity( this );
 	pChunk->m_lifeTime = random->RandomFloat( 6.0f, 8.0f );
 	pChunk->SetCollisionGroup( COLLISION_GROUP_DEBRIS );
@@ -445,6 +461,10 @@ void CPropAPC::Event_Killed( const CTakeDamageInfo &info )
 		// Throw a flaming, smoking chunk.
 		CGib *pChunk = CREATE_ENTITY( CGib, "gib" );
 		pChunk->Spawn( "models/gibs/hgibs.mdl" );
+		if (isRebelAPC)
+		{
+			pChunk->SetSkin(1);
+		}
 		pChunk->SetBloodColor( DONT_BLEED );
 
 		QAngle vecSpawnAngles;
@@ -454,6 +474,10 @@ void CPropAPC::Event_Killed( const CTakeDamageInfo &info )
 
 		int nGib = random->RandomInt( 0, APC_MAX_CHUNKS - 1 );
 		pChunk->Spawn( s_pChunkModelName[nGib] );
+		if (isRebelAPC)
+		{
+			pChunk->SetSkin(1);
+		}
 		pChunk->SetOwnerEntity( this );
 		pChunk->m_lifeTime = random->RandomFloat( 6.0f, 8.0f );
 		pChunk->SetCollisionGroup( COLLISION_GROUP_DEBRIS );
@@ -554,8 +578,15 @@ int CPropAPC::OnTakeDamage( const CTakeDamageInfo &info )
 	}
 
 	CTakeDamageInfo dmgInfo = info;
-	if ( dmgInfo.GetDamageType() & (DMG_BLAST | DMG_AIRBOAT) )
+	if (dmgInfo.GetDamageType() & (DMG_BLAST | DMG_AIRBOAT))
 	{
+		m_OnDamaged.FireOutput(info.GetAttacker(), this);
+
+		if (info.GetAttacker() && info.GetAttacker()->IsPlayer())
+		{
+			m_OnDamagedByPlayer.FireOutput(info.GetAttacker(), this);
+		}
+
 		int nPrevHealth = GetHealth();
 
 		m_iHealth -= dmgInfo.GetDamage();
@@ -880,6 +911,10 @@ void CPropAPC::CreateCorpse( )
 		pGib->SetAbsAngles( GetAbsAngles() );
 		pGib->SetAbsVelocity( GetAbsVelocity() );
 		pGib->SetModel( s_pGibModelName[i] );
+		if (isRebelAPC)
+		{
+			pGib->SetSkin(1);
+		}
 		pGib->Spawn();
 		pGib->SetMoveType( MOVETYPE_VPHYSICS );
 
