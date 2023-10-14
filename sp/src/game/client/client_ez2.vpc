@@ -44,9 +44,13 @@ $Project "Client (Entropy Zero 2)"
 			$File	"ez2\c_weapon_pulse_pistol.cpp"
 			$File	"ez2\zombiegooproxy.cpp"
 			$File	"ez2\hud_slamstatus.cpp"
-			$File	"ezu\hud_healthvialstatus.cpp"
-
 			$File	"workshop_publish.cpp" [!$NO_STEAM]
+		}
+		$Folder "EZU DLL"
+		{
+			$File	"ezu\hud_healthvialstatus.cpp"
+			$File	"ezu\c_bec.cpp"
+			$File	"ezu\c_red.cpp"
 		}
 		$Folder	"HL2 DLL"
 		{
