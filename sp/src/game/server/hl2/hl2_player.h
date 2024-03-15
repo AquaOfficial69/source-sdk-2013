@@ -198,8 +198,11 @@ public:
 
 	void		OnDropSatchel( CBaseEntity *pSatchel );
 	void		OnSetupTripmine( CBaseEntity *pTripmine );
+	void		OnSetupDetonatable( CBaseEntity *pDetonatable );
 	void		OnSatchelExploded( CBaseEntity *pSatchel, CBaseEntity *pAttacker );
 	void		OnTripmineExploded( CBaseEntity *pTripmine, CBaseEntity *pAttacker );
+	void		OnDetonatableExploded( CBaseEntity *pDetonatable, CBaseEntity *pAttacker );
+	void		OnDetonatableDisabled( CBaseEntity *pDetonatable );
 #endif
 
 	// Apply a battery
@@ -405,6 +408,7 @@ protected:
 	virtual void		HandleKickAttack();
 	virtual void		TraceKick( trace_t &tr, const Vector &vecAim );
 	virtual void		TraceKickAttack( CBaseEntity* pKickedEntity = NULL );
+	virtual bool		TryRagdollKickedEnemy(CBaseEntity* pKickedEntity, trace_t* tr, CTakeDamageInfo* dmgInfo, CBaseEntity* pKickingEntity);
 
 	void  HandleKickAnimation( void );
 	void  StartKickAnimation( void );
@@ -456,6 +460,7 @@ private:
 #ifdef EZ2
 	CUtlVector<CBaseEntity*>	m_hActiveSatchels;
 	CUtlVector<CBaseEntity*>	m_hActiveTripmines;
+	CUtlVector<CBaseEntity*>	m_hActiveDetonatables;
 #endif
 
 	Vector				m_vecMissPositions[16];

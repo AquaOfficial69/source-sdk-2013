@@ -62,6 +62,7 @@
 
 #ifdef EZ2
 #include "ez2/ez2_player.h"
+#include "CRagdollMagnet.h"
 #endif
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -150,6 +151,8 @@ ConVar sv_infinite_sprint_power( "sv_infinite_sprint_power", "1", FCVAR_CHEAT );
 ConVar sv_infinite_flashlight_power( "sv_infinite_flashlight_power", "0", FCVAR_CHEAT );
 ConVar sv_player_death_smell( "sv_player_death_smell", "1", FCVAR_REPLICATED );
 ConVar sv_player_kick_attack_enabled( "sv_player_kick_attack_enabled", "1", FCVAR_REPLICATED );
+ConVar sv_player_kick_attack_ragdolls("sv_player_kick_attack_ragdolls", "0", FCVAR_REPLICATED);
+ConVar sv_player_kick_attack_ragdoll_magnet_angle("sv_player_kick_attack_ragdoll_magnet_angle", "65", FCVAR_REPLICATED);
 ConVar sv_player_stomp_tiny_hull( "sv_player_stomp_tiny_hull", "0", FCVAR_REPLICATED, "Should a kick attack be dispatched to NPCs with tiny hulls when the player stands on top of them?" );
 ConVar sv_command_viewmodel_anims("sv_command_viewmodel_anims", "1", FCVAR_REPLICATED);
 ConVar sv_disallow_zoom_fire("sv_disallow_zoom_fire", "0", FCVAR_REPLICATED);
@@ -1977,7 +1980,7 @@ bool CHL2_Player::CommanderFindGoal( commandgoal_t *pGoal )
 	// Get either our +USE entity or the gravity gun entity
 	CBaseEntity *pHeldEntity = GetPlayerHeldEntity(this);
 	if ( !pHeldEntity )
-		PhysCannonGetHeldEntity( GetActiveWeapon() );
+		pHeldEntity = PhysCannonGetHeldEntity( GetActiveWeapon() );
 
 	CTraceFilterSkipTwoEntities filter( this, pHeldEntity, COLLISION_GROUP_INTERACTIVE_DEBRIS );
 #else
@@ -4299,6 +4302,17 @@ void CHL2_Player::UpdateClientData( void )
 		}
 	}
 	m_HL2Local.m_iTripmineCount = m_hActiveTripmines.Count();
+
+	if (m_hActiveDetonatables.Count() > 0)
+	{
+		// Clean up nonexistent detonatables
+		for (int i = m_hActiveDetonatables.Count()-1; i >= 0; i--)
+		{
+			if (m_hActiveDetonatables[i] == NULL || m_hActiveDetonatables[i]->IsMarkedForDeletion())
+				m_hActiveDetonatables.Remove( i );
+		}
+	}
+	m_HL2Local.m_iDetonatableCount = m_hActiveDetonatables.Count();
 #endif
 
 	BaseClass::UpdateClientData();
@@ -4327,6 +4341,13 @@ void CHL2_Player::OnRestore()
 		pGrenade = static_cast<CBaseGrenade*>(pEntity);
 		if (pGrenade->GetThrower() == this)
 			m_hActiveTripmines.AddToTail( pEntity );
+	}
+
+	while ((pEntity = gEntList.FindEntityByClassname( pEntity, "point_detonatable" )) != NULL)
+	{
+		CPointDetonatable *pDetonatable = static_cast<CPointDetonatable*>(pEntity);
+		if (!pDetonatable->m_bDisabled && pDetonatable->m_hThrower.Get() == this)
+			m_hActiveDetonatables.AddToTail( pEntity );
 	}
 #endif
 }
@@ -4765,7 +4786,7 @@ void CHL2_Player::TraceKickAttack( CBaseEntity* pKickedEntity )
 
 		// Try to dispatch an interaction
 		KickInfo_t kickInfo( &tr, &dmgInfo );
-		if ( !pKickedEntity->DispatchInteraction( g_interactionBadCopKick, &kickInfo, this ) )
+		if ( !TryRagdollKickedEnemy(pKickedEntity, &tr, &dmgInfo, this) && !pKickedEntity->DispatchInteraction( g_interactionBadCopKick, &kickInfo, this ) )
 		{
 			if (pKickedEntity->m_takedamage == DAMAGE_NO && pKickedEntity->GetParent())
 			{
@@ -4837,6 +4858,71 @@ void CHL2_Player::TraceKickAttack( CBaseEntity* pKickedEntity )
 	}
 }
 
+// TODO - Consider replacing this with a base class function to handle "fall damage". Maybe a unique interaction? That way grenades, dispel attacks, etc could ragdolls enemies near magnets
+bool CHL2_Player::TryRagdollKickedEnemy(CBaseEntity* pKickedEntity, trace_t* tr, CTakeDamageInfo* dmgInfo, CBaseEntity* pKickingEntity)
+{
+	if (!sv_player_kick_attack_ragdolls.GetBool())
+	{
+		return false;
+	}
+
+	if (pKickedEntity->MyNPCPointer() == NULL)
+	{
+		return false;
+	}
+
+	// If the victim does not have a humanoid or small hull, short circuit
+	if (pKickedEntity->MyNPCPointer()->GetHullType() >= HULL_WIDE_SHORT)
+	{
+		return false;
+	}
+
+	if (!pKickedEntity->MyNPCPointer()->CanBecomeRagdoll() || !pKickedEntity->MyNPCPointer()->CanBecomeServerRagdoll())
+	{
+		return false;
+	}
+
+	// If the victim has more than 100 HP, short circuit
+	if (GetHealth() > 100)
+	{
+		return false;
+	}
+
+	CRagdollMagnet* pMagnet = CRagdollMagnet::FindBestMagnet(pKickedEntity);
+	if (pMagnet)
+	{
+		DevMsg("Found ragdoll magnet for kicked NPC!\n");
+		// Send the damage to the recipient
+		Vector vecAim = BaseClass::GetAutoaimVector(AUTOAIM_SCALE_DEFAULT);
+		VectorNormalize(vecAim);
+
+		Vector magnetVector = pMagnet->GetForceVector(pKickedEntity);
+		VectorNormalize(magnetVector);
+
+		float aimMagnetDotProduct = DotProduct(vecAim, magnetVector);
+		float angleDifference = AngleNormalize(RAD2DEG(acos(aimMagnetDotProduct / (vecAim.Length() * magnetVector.Length()))));
+
+		DevMsg("Ragdoll magnet vector and aiming vector dot product: %f\n", aimMagnetDotProduct);
+		DevMsg("Ragdoll magnet vector is %f degrees off from kick angle\n" , angleDifference);
+
+		// Retrace the kick vector so the kick goes towards the ragdoll magnet
+		trace_t magnetTrace;
+		UTIL_TraceLine(tr->startpos, pMagnet->GetAbsOrigin(), MASK_SHOT_HULL, this, COLLISION_GROUP_NONE, &magnetTrace);
+
+		if (angleDifference < sv_player_kick_attack_ragdoll_magnet_angle.GetInt())
+		{
+			DevMsg("Kicked NPC will be ragdolled\n");
+			dmgInfo->SetDamage(pKickedEntity->GetHealth());
+			pKickedEntity->DispatchTraceAttack(*dmgInfo, pMagnet->GetForceVector(pKickedEntity), &magnetTrace);
+
+			ApplyMultiDamage();
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void CHL2_Player::StartKickAnimation( void )
 {
 	MDLCACHE_CRITICAL_SECTION();
@@ -4902,6 +4988,12 @@ void CHL2_Player::OnSetupTripmine( CBaseEntity *pTripmine )
 	m_hActiveTripmines.AddToTail( pTripmine );
 }
 
+void CHL2_Player::OnSetupDetonatable( CBaseEntity *pDetonatable )
+{
+	//Msg( "OnSetupDetonatable\n" );
+	m_hActiveDetonatables.AddToTail( pDetonatable );
+}
+
 void CHL2_Player::OnSatchelExploded( CBaseEntity *pSatchel, CBaseEntity *pAttacker )
 {
 	// send a message to the client, to notify the hud of the loss
@@ -4924,6 +5016,23 @@ void CHL2_Player::OnTripmineExploded( CBaseEntity *pTripmine, CBaseEntity *pAtta
 	MessageEnd();
 
 	m_hActiveTripmines.FindAndRemove( pTripmine );
+}
+
+void CHL2_Player::OnDetonatableExploded( CBaseEntity *pDetonatable, CBaseEntity *pAttacker )
+{
+	// send a message to the client, to notify the hud of the loss
+	CSingleUserRecipientFilter user( this );
+	user.MakeReliable();
+	UserMessageBegin( user, "SLAMExploded" );
+		WRITE_BOOL( pAttacker != this );
+	MessageEnd();
+
+	m_hActiveDetonatables.FindAndRemove( pDetonatable );
+}
+
+void CHL2_Player::OnDetonatableDisabled( CBaseEntity *pDetonatable )
+{
+	m_hActiveDetonatables.FindAndRemove( pDetonatable );
 }
 #endif
 

@@ -320,6 +320,7 @@ void CNPC_Gonome::Spawn()
 	CapabilitiesAdd( bits_CAP_MOVE_GROUND | bits_CAP_INNATE_RANGE_ATTACK1 | bits_CAP_INNATE_MELEE_ATTACK1 | bits_CAP_INNATE_MELEE_ATTACK2 );
 	CapabilitiesAdd( bits_CAP_MOVE_JUMP | bits_CAP_MOVE_CLIMB );
 	CapabilitiesAdd( bits_CAP_OPEN_DOORS | bits_CAP_AUTO_DOORS | bits_CAP_DOORS_GROUP );
+	CapabilitiesAdd( bits_CAP_AIM_GUN ); // Technically aiming body; see CNPC_BasePredator::AimGun()
 	
 	m_fCanThreatDisplay	= TRUE;
 	m_flNextSpitTime = gpGlobals->curtime;
@@ -332,8 +333,6 @@ void CNPC_Gonome::Spawn()
 
 	// Separate convar for gonome look distance to make them "blind"
 	SetDistLook( sk_zombie_assassin_look_dist.GetFloat() );
-
-	m_poseArmsOut = LookupPoseParameter( "arms_out" );
 }
 
 //=========================================================
@@ -395,6 +394,16 @@ void CNPC_Gonome::Precache()
 	// Placeholder gib and soundscript
 	PrecacheParticleSystem( "glownome_explode" );
 	PrecacheScriptSound( "npc_zassassin.kickburst" );
+}
+
+//=========================================================
+// SetupGlobalModelData
+//=========================================================
+void CNPC_Gonome::SetupGlobalModelData()
+{
+	BaseClass::SetupGlobalModelData();
+
+	m_poseArmsOut = LookupPoseParameter( "arms_out" );
 }
 
 //---------------------------------------------------------
@@ -624,6 +633,21 @@ void CNPC_Gonome::OnChangeActivity( Activity eNewActivity )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CNPC_Gonome::OnStateChange( NPC_STATE OldState, NPC_STATE NewState )
+{
+	BaseClass::OnStateChange( OldState, NewState );
+
+	if ( NewState == NPC_STATE_SCRIPT )
+	{
+		// Cancel range attack when entering a script
+		if (IsPlayingGesture( ACT_GESTURE_RANGE_ATTACK1 ))
+			RemoveGesture( ACT_GESTURE_RANGE_ATTACK1 );
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: turn in the direction of movement
 // Output :
 //-----------------------------------------------------------------------------
@@ -732,37 +756,6 @@ void CNPC_Gonome::IdleSound( void )
 }
 
 //=========================================================
-// PainSound 
-//=========================================================
-void CNPC_Gonome::PainSound( const CTakeDamageInfo &info )
-{
-	// Burning creatures shouldn't play pain sounds constantly
-	if ( !( IsOnFire() && info.GetDamageType() & DMG_BURN ) )
-	{
-		CPASAttenuationFilter filter( this );
-		EmitSound( filter, entindex(), "Gonome.Pain" );
-	}
-}
-
-//=========================================================
-// AlertSound
-//=========================================================
-void CNPC_Gonome::AlertSound( void )
-{
-	CPASAttenuationFilter filter( this );
-	EmitSound( filter, entindex(), "Gonome.Alert" );	
-}
-
-//=========================================================
-// DeathSound
-//=========================================================
-void CNPC_Gonome::DeathSound( const CTakeDamageInfo &info )
-{
-	CPASAttenuationFilter filter( this );
-	EmitSound( filter, entindex(), "Gonome.Die" );	
-}
-
-//=========================================================
 // AttackSound
 //=========================================================
 void CNPC_Gonome::AttackSound( void )
@@ -778,15 +771,6 @@ void CNPC_Gonome::GrowlSound( void )
 {
 	CPASAttenuationFilter filter( this );
 	EmitSound( filter, entindex(), "Gonome.Growl" );
-}
-
-//=========================================================
-// Found Enemy
-//=========================================================
-void CNPC_Gonome::FoundEnemySound(void)
-{
-	CPASAttenuationFilter filter(this);
-	EmitSound(filter, entindex(), "Gonome.FoundEnemy");
 }
 
 //=========================================================
@@ -1018,11 +1002,25 @@ void CNPC_Gonome::HandleAnimEvent( animevent_t *pEvent )
 			}
 
 			// Apply a velocity to hit entity if it is a character or if it has a physics movetype
-			if ( pHurt && ( pHurt->MyCombatCharacterPointer() || pHurt->GetMoveType() == MOVETYPE_VPHYSICS ) )
+			if ( pHurt && ShouldApplyHitVelocityToTarget( pHurt ) )
 			{
 				Vector forward, up;
 				AngleVectors( GetAbsAngles(), &forward, NULL, &up );
-				pHurt->SetAbsVelocity( pHurt->GetAbsVelocity() - (forward * 100) );
+
+				if (pHurt->IsNPC())
+				{
+					Vector vecInteractionDir;
+					if ( GetNearestInteractionDir( pHurt->MyNPCPointer(), vecInteractionDir ) )
+					{
+						// Push the target in the direction of the interaction
+						pHurt->SetAbsVelocity( pHurt->GetAbsVelocity() + vecInteractionDir );
+					}
+					else
+						pHurt->SetAbsVelocity( pHurt->GetAbsVelocity() - (forward * 100) );
+				}
+				else
+					pHurt->SetAbsVelocity( pHurt->GetAbsVelocity() - (forward * 100) );
+
 				pHurt->SetAbsVelocity( pHurt->GetAbsVelocity() + (up * 100) );
 				pHurt->SetGroundEntity( NULL );
 			}
